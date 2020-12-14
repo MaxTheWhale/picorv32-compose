@@ -1,0 +1,7 @@
+*.bin
+*.hex
+*.asc
+*.elf
+*.map
+*.log
+synth.v
