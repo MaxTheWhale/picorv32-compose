@@ -167,8 +167,8 @@ module top (
 	// -------------------------------
 	// Memory/IO Interface
 
-	// 128 32bit words = 512 bytes memory
-	localparam MEM_SIZE = 128;
+	// 512 32bit words = 2048 bytes memory
+	localparam MEM_SIZE = 512;
 	reg [31:0] memory [0:MEM_SIZE-1];
 	initial $readmemh("firmware.hex", memory);
 
