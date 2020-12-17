@@ -1,3 +1,6 @@
+.section .text
+.balign 4
+
 .global multi_add
 .global multi_sub
 
