@@ -31,65 +31,43 @@ multi_add_start:
     beq  a_addr, a_addr_end, multi_add_end
     lw   a_value, 0(a_addr)
     lw   b_value, 0(b_addr)
-    add  res_value, a_value, carry   // res = a + carry
-    sltu carry, res_value, a_value   // check overflow
-    add  res_value, res_value, b_value   // res += b
-    sltu temp_carry, res_value, b_value   // check overflow
-    or   carry, carry, temp_carry   // combine carry results 
+    add  res_value, a_value, carry
+    sltu carry, res_value, a_value
+    add  res_value, res_value, b_value
+    sltu temp_carry, res_value, b_value
+    or   carry, carry, temp_carry
     sw   res_value, 0(res_addr)
     addi a_addr, a_addr, 4
     addi b_addr, b_addr, 4
     addi res_addr, res_addr, 4
     j    multi_add_start
 multi_add_end:
-    mv   carry_out, carry       // return final carry
+    mv   carry_out, carry
     ret
 
 // extern int multi_sub(const void *a, const void *b, void *res, int n_words);
 multi_sub:
-    li   carry, 1        // initialise carry to 1 for subtract
+    li   carry, 1
     slli n_bytes, n_words, 2
     add  a_addr_end, n_bytes, a_addr
 multi_sub_start:
     beq  a_addr, a_addr_end, multi_add_end
     lw   a_value, (a_addr)
     lw   b_value, (b_addr)
-    not  b_value, b_value       // invert second arg for subtract
-    add  res_value, a_value, carry   // res = a + carry
-    sltu carry, res_value, a_value   // check overflow
-    add  res_value, res_value, b_value   // res += b
-    sltu temp_carry, res_value, b_value   // check overflow
-    or   carry, carry, temp_carry   // combine carry results 
+    not  b_value, b_value
+    add  res_value, a_value, carry
+    sltu carry, res_value, a_value
+    add  res_value, res_value, b_value
+    sltu temp_carry, res_value, b_value
+    or   carry, carry, temp_carry
     sw   res_value, (res_addr)
     addi a_addr, a_addr, 4
     addi b_addr, b_addr, 4
     addi res_addr, res_addr, 4
     j    multi_sub_start
 multi_sub_end:
-    mv   carry_out, carry       // return final carry
+    mv   carry_out, carry
     ret
-
-// Clear result to zero (Only first half)
-// for (; b_addr != b_addr_end; b_addr += 4) {
-//    carry = 0;
-//    b_value = *b_addr
-//    res_addr_temp = res_addr
-//    for (a_addr_temp = a_addr; a_addr_temp != a_addr_end; a_addr_temp += 4) {
-//        a_value = *a_addr_temp
-//        r_value = *res_addr_temp
-//        mul_low = a_value * b_value
-//        r_value += carry, set carry
-//        r_value += mul_low, set temp
-//        add carrys
-//        res_addr_temp* = r_value
-//        carrys += mul_high(a_value * b_value)
-//        res_addr_temp += 4
-//    }
-//    res_addr_temp* = carry
-//    res_addr += 4
-// }
-// a_value, b_value, r_value, a_addr, a_addr_temp, a_addr_end, b_addr, b_addr_end, res_addr, res_addr_temp, temp, carry
-//    t0       t1       t2      a0         t3          t4        a1        t5         a2          t6         a4    a5
 
 // extern void multi_mult(const void *a, const void *b, void *res, int n_words);
 multi_mult:
@@ -102,29 +80,29 @@ zero_loop:
     beq  res_addr_temp, temp, b_loop
     sw   zero, 0(res_addr_temp)
     addi res_addr_temp, res_addr_temp, 4
-    j zero_loop
+    j    zero_loop
 b_loop:
-    beq b_addr, b_addr_end, b_loop_end
-    li  carry, 0
-    lw  b_value, 0(b_addr)
-    mv  res_addr_temp, res_addr
-    mv  a_addr_temp, a_addr
+    beq  b_addr, b_addr_end, b_loop_end
+    li   carry, 0
+    lw   b_value, 0(b_addr)
+    mv   res_addr_temp, res_addr
+    mv   a_addr_temp, a_addr
 a_loop:
-    beq  a_addr_temp, a_addr_end, a_loop_end
-    lw   a_value, 0(a_addr_temp)
-    lw   res_value, 0(res_addr_temp)
-    mul  temp, a_value, b_value
-    add  res_value, res_value, carry
-    sltu carry, res_value, carry
-    add  res_value, res_value, temp
-    sltu temp, res_value, temp
-    add  carry, carry, temp
-    sw   res_value, 0(res_addr_temp)
+    beq   a_addr_temp, a_addr_end, a_loop_end
+    lw    a_value, 0(a_addr_temp)
+    lw    res_value, 0(res_addr_temp)
+    mul   temp, a_value, b_value
+    add   res_value, res_value, carry
+    sltu  carry, res_value, carry
+    add   res_value, res_value, temp
+    sltu  temp, res_value, temp
+    add   carry, carry, temp
+    sw    res_value, 0(res_addr_temp)
     mulhu temp, a_value, b_value
-    add  carry, carry, temp
-    addi res_addr_temp, res_addr_temp, 4
-    addi a_addr_temp, a_addr_temp, 4
-    j    a_loop
+    add   carry, carry, temp
+    addi  res_addr_temp, res_addr_temp, 4
+    addi  a_addr_temp, a_addr_temp, 4
+    j     a_loop
 a_loop_end:
     sw   carry, 0(res_addr_temp)
     addi res_addr, res_addr, 4
