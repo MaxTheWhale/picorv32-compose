@@ -1,48 +1,63 @@
 .global multi_add
 .global multi_sub
 
+#define carry       t0
+#define temp_carry  t5
+#define index       t1
+#define a_addr      a0
+#define b_addr      a1
+#define res_addr    a2
+#define a_value     t2
+#define b_value     t3
+#define res_value   t4
+#define n_words     a3
+#define carry_out   a0
+
+
 // extern int multi_add(const void *a, const void *b, void *res, int n_words);
 multi_add:
-    li   t0, 0
-    li   t1, 0
+    li   carry, 0
+    li   index, 0
 multi_add_start:
-    beq  t1, a3, multi_add_end
-    lw   t2, (a0)
-    lw   t3, (a1)
-    add  t4, t2, t0   // res = a + carry
-    sltu t0, t4, t2   // check overflow
-    add  t4, t4, t3   // res += b
-    sltu t5, t4, t3   // check overflow
-    or   t0, t0, t5   // combine carry results 
-    sw   t4, (a2)
-    addi t1, t1, 1
-    addi a0, a0, 4
-    addi a1, a1, 4
-    addi a2, a2, 4
+    beq  index, n_words, multi_add_end
+    lw   a_value, (a_addr)
+    lw   b_value, (b_addr)
+    add  res_value, a_value, carry   // res = a + carry
+    sltu carry, res_value, a_value   // check overflow
+    add  res_value, res_value, b_value   // res += b
+    sltu temp_carry, res_value, b_value   // check overflow
+    or   carry, carry, temp_carry   // combine carry results 
+    sw   res_value, (res_addr)
+    addi index, index, 1
+    addi a_addr, a_addr, 4
+    addi b_addr, b_addr, 4
+    addi res_addr, res_addr, 4
     j    multi_add_start  
 multi_add_end:
-    mv   a0, t0       // return final carry
-    jr   ra
+    mv   carry_out, carry       // return final carry
+    ret
 
+// extern int multi_sub(const void *a, const void *b, void *res, int n_words);
 multi_sub:
-    li   t0, 1        // initialise carry to 1 for subtract
-    li   t1, 0
+    li   carry, 1        // initialise carry to 1 for subtract
+    li   index, 0
 multi_sub_start:
-    beq  t1, a3, multi_sub_end
-    lw   t2, (a0)
-    lw   t3, (a1)
-    not  t3, t3       // invert second arg for subtract
-    add  t4, t2, t0   // res = a + carry
-    sltu t0, t4, t2   // check overflow
-    add  t4, t4, t3   // res += b
-    sltu t5, t4, t3   // check overflow
-    or   t0, t0, t5   // combine carry results 
-    sw   t4, (a2)
-    addi t1, t1, 1
-    addi a0, a0, 4
-    addi a1, a1, 4
-    addi a2, a2, 4
-    j    multi_sub_start  
+    beq  index, n_words, multi_sub_end
+    lw   a_value, (a_addr)
+    lw   b_value, (b_addr)
+    not  b_value, b_value       // invert second arg for subtract
+    add  res_value, a_value, carry   // res = a + carry
+    sltu carry, res_value, a_value   // check overflow
+    add  res_value, res_value, b_value   // res += b
+    sltu temp_carry, res_value, b_value   // check overflow
+    or   carry, carry, temp_carry   // combine carry results 
+    sw   res_value, (res_addr)
+    addi index, index, 1
+    addi a_addr, a_addr, 4
+    addi b_addr, b_addr, 4
+    addi res_addr, res_addr, 4
+    j    multi_sub_start
 multi_sub_end:
-    mv   a0, t0       // return final carry
-    jr   ra
+    mv   carry_out, carry       // return final carry
+    ret
+
