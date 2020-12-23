@@ -66,12 +66,12 @@ module test (
 
     hex8 hex (
 		.clk(clk12MHz),
-		.reset(btn1)
+		.reset(~btn1),
+		.a_value(leds1),
+		.b_value(leds2),
+		.pc_value(leds3)
 	);
 
-	assign leds1 = hex.a_reg;
-	assign leds2 = hex.b_reg;
-	assign leds3 = hex.pc;
-	assign leds4 = 8'b0;
+	assign leds4 = 8'b11111111;
 
 endmodule

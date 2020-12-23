@@ -1,7 +1,10 @@
 
 module hex8 (
     input wire clk,
-    input wire reset
+    input wire reset,
+    output wire [7:0] a_value,
+    output wire [7:0] b_value,
+    output wire [7:0] pc_value
 );
 
 reg [7:0] a_reg;
@@ -11,6 +14,10 @@ reg [3:0] o_reg_high;
 reg [7:0] r_reg;
 reg [7:0] pc;
 reg [3:0] i_reg;
+
+assign a_value = a_reg;
+assign b_value = b_reg;
+assign pc_value = pc;
 
 reg [7:0] memory [0:255];
 reg [2:0] pipeline;
@@ -109,7 +116,7 @@ end
 
 assign au_result = (au_sub) ?
                    a_result - b_result :
-                   a_result + b_result;
+                   a_result + b_result + {7'b0, inc};
 
 assign result = (r_mux_sel) ? au_result : memory[au_result];
 
