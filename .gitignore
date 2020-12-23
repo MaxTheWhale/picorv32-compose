@@ -1,3 +1,5 @@
 .idea
 obj_dir
 *.json
+*.asc
+*.bin
