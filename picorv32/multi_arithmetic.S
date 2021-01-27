@@ -27,7 +27,7 @@ multi_add:
     li   carry, 0
     slli n_bytes, n_words, 2
     add  a_addr_end, n_bytes, a_addr
-multi_add_start:
+multi_add_loop:
     beq  a_addr, a_addr_end, multi_add_end
     lw   a_value, 0(a_addr)
     lw   b_value, 0(b_addr)
@@ -40,7 +40,7 @@ multi_add_start:
     addi a_addr, a_addr, 4
     addi b_addr, b_addr, 4
     addi res_addr, res_addr, 4
-    j    multi_add_start
+    j    multi_add_loop
 multi_add_end:
     mv   carry_out, carry
     ret
@@ -50,7 +50,7 @@ multi_sub:
     li   carry, 1
     slli n_bytes, n_words, 2
     add  a_addr_end, n_bytes, a_addr
-multi_sub_start:
+multi_sub_loop:
     beq  a_addr, a_addr_end, multi_add_end
     lw   a_value, (a_addr)
     lw   b_value, (b_addr)
@@ -64,7 +64,7 @@ multi_sub_start:
     addi a_addr, a_addr, 4
     addi b_addr, b_addr, 4
     addi res_addr, res_addr, 4
-    j    multi_sub_start
+    j    multi_sub_loop
 multi_sub_end:
     mv   carry_out, carry
     ret
