@@ -85,7 +85,8 @@ module picorv32 #(
 	parameter [31:0] LATCHED_IRQ = 32'h ffff_ffff,
 	parameter [31:0] PROGADDR_RESET = 32'h 0000_0000,
 	parameter [31:0] PROGADDR_IRQ = 32'h 0000_0010,
-	parameter [31:0] STACKADDR = 32'h ffff_ffff
+	parameter [31:0] STACKADDR = 32'h ffff_ffff,
+	parameter [31:0] HART_ID = 0
 ) (
 	input clk, resetn,
 	output reg trap,
@@ -648,7 +649,7 @@ module picorv32 #(
 	reg instr_lb, instr_lh, instr_lw, instr_lbu, instr_lhu, instr_sb, instr_sh, instr_sw;
 	reg instr_addi, instr_slti, instr_sltiu, instr_xori, instr_ori, instr_andi, instr_slli, instr_srli, instr_srai;
 	reg instr_add, instr_sub, instr_sll, instr_slt, instr_sltu, instr_xor, instr_srl, instr_sra, instr_or, instr_and;
-	reg instr_rdcycle, instr_rdcycleh, instr_rdinstr, instr_rdinstrh, instr_ecall_ebreak;
+	reg instr_rdcycle, instr_rdcycleh, instr_rdinstr, instr_rdinstrh, instr_mhartid, instr_ecall_ebreak;
 	reg instr_getq, instr_setq, instr_retirq, instr_maskirq, instr_waitirq, instr_timer;
 	wire instr_trap;
 
@@ -680,11 +681,11 @@ module picorv32 #(
 			instr_lb, instr_lh, instr_lw, instr_lbu, instr_lhu, instr_sb, instr_sh, instr_sw,
 			instr_addi, instr_slti, instr_sltiu, instr_xori, instr_ori, instr_andi, instr_slli, instr_srli, instr_srai,
 			instr_add, instr_sub, instr_sll, instr_slt, instr_sltu, instr_xor, instr_srl, instr_sra, instr_or, instr_and,
-			instr_rdcycle, instr_rdcycleh, instr_rdinstr, instr_rdinstrh,
+			instr_rdcycle, instr_mhartid, instr_rdcycleh, instr_rdinstr, instr_rdinstrh,
 			instr_getq, instr_setq, instr_retirq, instr_maskirq, instr_waitirq, instr_timer};
 
-	wire is_rdcycle_rdcycleh_rdinstr_rdinstrh;
-	assign is_rdcycle_rdcycleh_rdinstr_rdinstrh = |{instr_rdcycle, instr_rdcycleh, instr_rdinstr, instr_rdinstrh};
+	wire is_rdcycle_rdcycleh_rdinstr_rdinstrh_mhartid;
+	assign is_rdcycle_rdcycleh_rdinstr_rdinstrh_mhartid = |{instr_rdcycle, instr_rdcycleh, instr_rdinstr, instr_rdinstrh, instr_mhartid};
 
 	reg [63:0] new_ascii_instr;
 	`FORMAL_KEEP reg [63:0] dbg_ascii_instr;
@@ -743,6 +744,7 @@ module picorv32 #(
 		if (instr_and)      new_ascii_instr = "and";
 
 		if (instr_rdcycle)  new_ascii_instr = "rdcycle";
+		if (instr_mhartid)  new_ascii_instr = "mhartid";
 		if (instr_rdcycleh) new_ascii_instr = "rdcycleh";
 		if (instr_rdinstr)  new_ascii_instr = "rdinstr";
 		if (instr_rdinstrh) new_ascii_instr = "rdinstrh";
@@ -1080,6 +1082,8 @@ module picorv32 #(
 			                   (mem_rdata_q[6:0] == 7'b1110011 && mem_rdata_q[31:12] == 'b11001000000100000010)) && ENABLE_COUNTERS && ENABLE_COUNTERS64;
 			instr_rdinstr  <=  (mem_rdata_q[6:0] == 7'b1110011 && mem_rdata_q[31:12] == 'b11000000001000000010) && ENABLE_COUNTERS;
 			instr_rdinstrh <=  (mem_rdata_q[6:0] == 7'b1110011 && mem_rdata_q[31:12] == 'b11001000001000000010) && ENABLE_COUNTERS && ENABLE_COUNTERS64;
+
+			instr_mhartid  <= (mem_rdata_q[6:0] == 7'b1110011 && mem_rdata_q[31:12] == 'b11110001000000000010) && ENABLE_COUNTERS;
 
 			instr_ecall_ebreak <= ((mem_rdata_q[6:0] == 7'b1110011 && !mem_rdata_q[31:21] && !mem_rdata_q[19:7]) ||
 					(COMPRESSED_ISA && mem_rdata_q[15:0] == 16'h9002));
@@ -1618,7 +1622,7 @@ module picorv32 #(
 								cpu_state <= cpu_state_trap;
 						end
 					end
-					ENABLE_COUNTERS && is_rdcycle_rdcycleh_rdinstr_rdinstrh: begin
+					ENABLE_COUNTERS && is_rdcycle_rdcycleh_rdinstr_rdinstrh_mhartid: begin
 						(* parallel_case, full_case *)
 						case (1'b1)
 							instr_rdcycle:
@@ -1629,6 +1633,8 @@ module picorv32 #(
 								reg_out <= count_instr[31:0];
 							instr_rdinstrh && ENABLE_COUNTERS64:
 								reg_out <= count_instr[63:32];
+							instr_mhartid:
+								reg_out <= HART_ID;
 						endcase
 						latched_store <= 1;
 						cpu_state <= cpu_state_fetch;

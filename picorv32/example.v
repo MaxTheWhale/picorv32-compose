@@ -69,12 +69,13 @@ module top (
 			
 			/* verilator lint_off PINMISSING */
 			picorv32 #(
-				.ENABLE_COUNTERS(0),
+				.ENABLE_COUNTERS(1),
 				.LATCHED_MEM_RDATA(1),
 				.TWO_STAGE_SHIFT(0),
 				.TWO_CYCLE_ALU(0),
 				.CATCH_MISALIGN(0),
-				.CATCH_ILLINSN(0)
+				.CATCH_ILLINSN(0),
+				.HART_ID(core_num)
 			) cpu (
 				.clk      (clk      ),
 				.resetn   (resetn   ),
@@ -128,7 +129,11 @@ module top (
 					mem_ready[mem_arb_counter] <= 1;
 				end
 				|mem_wstrb[3 -: 4] && mem_addr[31 -: 32] == 32'h1000_0000: begin
-					leds[8*mem_arb_counter + 7 -: 8] <= mem_wdata[7 -: 8];
+					leds[ 7: 0] <= mem_wdata[7 -: 8];
+					mem_ready[mem_arb_counter] <= 1;
+				end
+				|mem_wstrb[3 -: 4] && mem_addr[31 -: 32] == 32'h1000_0004: begin
+					leds[ 15: 8] <= mem_wdata[7 -: 8];
 					mem_ready[mem_arb_counter] <= 1;
 				end
 			endcase

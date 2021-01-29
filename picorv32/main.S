@@ -6,10 +6,13 @@
 main:
     // Initialise counter and comparison value
     li a0, (2+4+32+64)
-    slli a0, a0, 18
+    csrr t3, 0xF10
+    slli t3, t3, 2
+    addi t4, t3, 15
+    sll a0, a0, t4
     li a1, 0
     not a1, a1
-    slli a1, a1, 18
+    sll a1, a1, t4
     not a1, a1
 counter_loop:
     and a2, a0, a1
@@ -17,7 +20,7 @@ counter_loop:
     beq a2, zero, call_grey
     j counter_loop
 call_grey:
-    srli a3, a0, 18
+    srl a3, a0, t4
     jal ra, grey_encode
     jal ra, output_byte
     j counter_loop
@@ -31,5 +34,6 @@ grey_encode:
 // output low byte of a4 to LEDs
 output_byte:
     li   t1, OUTPUT_ADDR
-    sb   a4, (t1)
+    add  t1, t1, t3
+    sb   a3, (t1)
     jr   ra
