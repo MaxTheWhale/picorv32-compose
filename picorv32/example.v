@@ -7,7 +7,13 @@ module top (
 	output lcol1, lcol2, lcol3, lcol4
 );
 
-	reg [31:0] leds;
+	localparam N_CORES = 2;
+	localparam N_CORES_BITS = (N_CORES == 4) ? 2 : 1;
+
+	// -------------------------------
+	// LED Display
+
+	reg [31:0] leds = 32'b0;
 
 	reg [2:0] brightness = 3'b111;
 
@@ -39,129 +45,57 @@ module top (
 	reg [7:0] resetn_counter = 0;
 	wire resetn = &resetn_counter;
 
-	reg [1:0] mem_arb_counter;
+	reg [N_CORES_BITS-1:0] mem_arb_counter = 0;
+	reg [N_CORES_BITS-1:0] mem_la_arb_counter = 1;
 
 	always @(posedge clk) begin
 		if (!resetn)
 			resetn_counter <= resetn_counter + 1;
 	end
 
+	wire [N_CORES - 1:0] mem_valid;
+	wire [32*N_CORES - 1:0] mem_la_addr;
+	wire [32*N_CORES - 1:0] mem_la_wdata;
+	wire [4*N_CORES - 1:0] mem_la_wstrb;
+
+	reg [N_CORES - 1:0] mem_ready;
+	reg [32*N_CORES - 1:0] mem_rdata;
 
 	// -------------------------------
-	// PicoRV32 Core
+	// PicoRV32 Cores
+	genvar core_num;
+	generate
+		for (core_num = 0; core_num < N_CORES; core_num = core_num + 1) begin
+			
+			/* verilator lint_off PINMISSING */
+			picorv32 #(
+				.ENABLE_COUNTERS(0),
+				.LATCHED_MEM_RDATA(1),
+				.TWO_STAGE_SHIFT(0),
+				.TWO_CYCLE_ALU(0),
+				.CATCH_MISALIGN(0),
+				.CATCH_ILLINSN(0)
+			) cpu (
+				.clk      (clk      ),
+				.resetn   (resetn   ),
+				.mem_valid(mem_valid    [core_num]),
+				.mem_ready(mem_ready    [core_num]),
+				.mem_la_addr(mem_la_addr[32*core_num + 31 -: 32]),
+				.mem_wdata(mem_la_wdata [32*core_num + 31 -: 32]),
+				.mem_wstrb(mem_la_wstrb [4*core_num  + 3  -: 4]),
+				.mem_rdata(mem_rdata    [32*core_num + 31 -: 32])
+			);
+			/* verilator lint_on PINMISSING */
 
-	wire [1:0] mem_valid;
-	wire [63:0] mem_la_addr;
-	wire [63:0] mem_wdata;
-	wire [7:0] mem_wstrb;
-
-	reg [1:0] mem_ready;
-	reg [63:0] mem_rdata;
-
-	/* verilator lint_off PINMISSING */
-	picorv32 #(
-		.ENABLE_COUNTERS(1),
-		.LATCHED_MEM_RDATA(1),
-		.TWO_STAGE_SHIFT(0),
-		.TWO_CYCLE_ALU(0),
-		.CATCH_MISALIGN(0),
-		.CATCH_ILLINSN(0)
-	) cpu (
-		.clk      (clk      ),
-		.resetn   (resetn   ),
-		.mem_valid(mem_valid[0]),
-		.mem_ready(mem_ready[0]),
-		.mem_la_addr(mem_la_addr[31:0]),
-		.mem_wdata(mem_wdata[31:0]),
-		.mem_wstrb(mem_wstrb[3:0]),
-		.mem_rdata(mem_rdata[31:0])
-	);
-
-	// -------------------------------
-	// PicoRV32 Core2
-
-	picorv32 #(
-		.ENABLE_COUNTERS(1),
-		.LATCHED_MEM_RDATA(1),
-		.TWO_STAGE_SHIFT(0),
-		.TWO_CYCLE_ALU(0),
-		.CATCH_MISALIGN(0),
-		.CATCH_ILLINSN(0)
-	) cpu2 (
-		.clk      (clk      ),
-		.resetn   (resetn   ),
-		.mem_valid(mem_valid[1]),
-		.mem_ready(mem_ready[1]),
-		.mem_la_addr(mem_la_addr[63:32]),
-		.mem_wdata(mem_wdata[63:32]),
-		.mem_wstrb(mem_wstrb[7:4]),
-		.mem_rdata(mem_rdata[63:32])
-	);
-
-	// // -------------------------------
-	// // PicoRV32 Core3
-
-	// wire mem_valid3;
-	// wire [31:0] mem_addr3;
-	// wire [31:0] mem_wdata3;
-	// wire [3:0] mem_wstrb3;
-
-	// reg mem_ready3;
-	// reg [31:0] mem_rdata3;
-
-	// picorv32 #(
-	// 	.ENABLE_COUNTERS(1),
-	// 	.LATCHED_MEM_RDATA(1),
-	// 	.TWO_STAGE_SHIFT(0),
-	// 	.TWO_CYCLE_ALU(0),
-	// 	.CATCH_MISALIGN(0),
-	// 	.CATCH_ILLINSN(0)
-	// ) cpu3 (
-	// 	.clk      (clk      ),
-	// 	.resetn   (resetn   ),
-	// 	.mem_valid(mem_valid3),
-	// 	.mem_ready(mem_ready3),
-	// 	.mem_addr (mem_addr3 ),
-	// 	.mem_wdata(mem_wdata3),
-	// 	.mem_wstrb(mem_wstrb3),
-	// 	.mem_rdata(mem_rdata3)
-	// );
-
-	// // -------------------------------
-	// // PicoRV32 Core4
-
-	// wire mem_valid4;
-	// wire [31:0] mem_addr4;
-	// wire [31:0] mem_wdata4;
-	// wire [3:0] mem_wstrb4;
-
-	// reg mem_ready4;
-	// reg [31:0] mem_rdata4;
-
-	// picorv32 #(
-	// 	.ENABLE_COUNTERS(1),
-	// 	.LATCHED_MEM_RDATA(1),
-	// 	.TWO_STAGE_SHIFT(0),
-	// 	.TWO_CYCLE_ALU(0),
-	// 	.CATCH_MISALIGN(0),
-	// 	.CATCH_ILLINSN(0)
-	// ) cpu4 (
-	// 	.clk      (clk      ),
-	// 	.resetn   (resetn   ),
-	// 	.mem_valid(mem_valid4),
-	// 	.mem_ready(mem_ready4),
-	// 	.mem_addr (mem_addr4 ),
-	// 	.mem_wdata(mem_wdata4),
-	// 	.mem_wstrb(mem_wstrb4),
-	// 	.mem_rdata(mem_rdata4)
-	// );
-	/* verilator lint_on PINMISSING */
-
+		end
+	endgenerate
 
 	// -------------------------------
 	// Memory/IO Interface
 
 	reg [31:0] mem_addr;
+	reg [31:0] mem_wdata;
+	reg [3:0] mem_wstrb;
 
 	// 512 32bit words = 2048 bytes memory
 	localparam MEM_SIZE = 2048;
@@ -169,29 +103,33 @@ module top (
 	initial $readmemh("firmware.hex", memory);
 
 	always @(posedge clk) begin
+
 		mem_arb_counter <= mem_arb_counter + 1;
+		mem_la_arb_counter <= mem_la_arb_counter + 1;
 
-		mem_ready <= 2'b0;
+		mem_addr <= mem_la_addr[32*mem_la_arb_counter + 31 -: 32];
+		mem_wdata <= mem_la_wdata[32*mem_la_arb_counter + 31 -: 32];
+		mem_wstrb <= mem_la_wstrb[4*mem_la_arb_counter + 3 -: 4];
 
-		mem_addr <= mem_la_addr[32*(!mem_arb_counter[0]) + 31 -: 32];
+		mem_ready <= 0;
 
-		if (resetn && mem_valid[mem_arb_counter[0]] && !mem_ready[mem_arb_counter[0]]) begin
+		if (resetn && mem_valid[mem_arb_counter] && !mem_ready[mem_arb_counter]) begin
 			(* parallel_case *)
 			case (1)
-				!(|mem_wstrb[4*mem_arb_counter[0] + 3 -: 4]) && !(|mem_addr[31 -: 19]): begin
-					mem_rdata[32*mem_arb_counter[0] + 31 -: 32] <= memory[mem_addr[12 -: 11]];
-					mem_ready[mem_arb_counter[0]] <= 1;
+				!(|mem_wstrb[3 -: 4]) && !(|mem_addr[31 -: 19]): begin
+					mem_rdata[32*mem_arb_counter + 31 -: 32] <= memory[mem_addr[12 -: 11]];
+					mem_ready[mem_arb_counter] <= 1;
 				end
-				|mem_wstrb[4*mem_arb_counter[0] + 3 -: 4] && !(|mem_addr[31 -: 19]): begin
-					if (mem_wstrb[4*mem_arb_counter[0]]) memory[mem_addr[12 -: 11]][ 7: 0] <= mem_wdata[32*mem_arb_counter[0] + 7 -: 8];
-					if (mem_wstrb[4*mem_arb_counter[0] + 1]) memory[mem_addr[12 -: 11]][15: 8] <= mem_wdata[32*mem_arb_counter[0] + 15 -: 8];
-					if (mem_wstrb[4*mem_arb_counter[0] + 2]) memory[mem_addr[12 -: 11]][23:16] <= mem_wdata[32*mem_arb_counter[0] + 23 -: 8];
-					if (mem_wstrb[4*mem_arb_counter[0] + 3]) memory[mem_addr[12 -: 11]][31:24] <= mem_wdata[32*mem_arb_counter[0] + 31 -: 8];
-					mem_ready[mem_arb_counter[0]] <= 1;
+				|mem_wstrb[3 -: 4] && !(|mem_addr[31 -: 19]): begin
+					if (mem_wstrb[0]) memory[mem_addr[12 -: 11]][ 7: 0] <= mem_wdata[7 -: 8];
+					if (mem_wstrb[1]) memory[mem_addr[12 -: 11]][15: 8] <= mem_wdata[15 -: 8];
+					if (mem_wstrb[2]) memory[mem_addr[12 -: 11]][23:16] <= mem_wdata[23 -: 8];
+					if (mem_wstrb[3]) memory[mem_addr[12 -: 11]][31:24] <= mem_wdata[31 -: 8];
+					mem_ready[mem_arb_counter] <= 1;
 				end
-				|mem_wstrb[4*mem_arb_counter[0] + 3 -: 4] && mem_addr[31 -: 32] == 32'h1000_0000: begin
-					leds[8*mem_arb_counter[0] + 7 -: 8] <= mem_wdata[32*mem_arb_counter[0] + 7 -: 8];
-					mem_ready[mem_arb_counter[0]] <= 1;
+				|mem_wstrb[3 -: 4] && mem_addr[31 -: 32] == 32'h1000_0000: begin
+					leds[8*mem_arb_counter + 7 -: 8] <= mem_wdata[7 -: 8];
+					mem_ready[mem_arb_counter] <= 1;
 				end
 			endcase
 		end
