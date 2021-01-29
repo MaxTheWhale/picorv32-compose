@@ -7,7 +7,7 @@ main:
     // Initialise counter and comparison value
     li a0, (2+4+32+64)
     csrr t3, 0xF10
-    slli t3, t3, 2
+    slli t5, t3, 2
     addi t4, t3, 15
     sll a0, a0, t4
     li a1, 0
@@ -34,6 +34,6 @@ grey_encode:
 // output low byte of a4 to LEDs
 output_byte:
     li   t1, OUTPUT_ADDR
-    add  t1, t1, t3
-    sb   a3, (t1)
+    add  t1, t1, t5
+    sb   a4, (t1)
     jr   ra

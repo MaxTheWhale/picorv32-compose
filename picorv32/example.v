@@ -7,7 +7,7 @@ module top (
 	output lcol1, lcol2, lcol3, lcol4
 );
 
-	localparam N_CORES = 2;
+	localparam N_CORES = 4;
 	localparam N_CORES_BITS = (N_CORES == 4) ? 2 : 1;
 
 	// -------------------------------
@@ -133,7 +133,15 @@ module top (
 					mem_ready[mem_arb_counter] <= 1;
 				end
 				|mem_wstrb[3 -: 4] && mem_addr[31 -: 32] == 32'h1000_0004: begin
-					leds[ 15: 8] <= mem_wdata[7 -: 8];
+					leds[15: 8] <= mem_wdata[7 -: 8];
+					mem_ready[mem_arb_counter] <= 1;
+				end
+				|mem_wstrb[3 -: 4] && mem_addr[31 -: 32] == 32'h1000_0008: begin
+					leds[23:16] <= mem_wdata[7 -: 8];
+					mem_ready[mem_arb_counter] <= 1;
+				end
+				|mem_wstrb[3 -: 4] && mem_addr[31 -: 32] == 32'h1000_000c: begin
+					leds[31:24] <= mem_wdata[7 -: 8];
 					mem_ready[mem_arb_counter] <= 1;
 				end
 			endcase
