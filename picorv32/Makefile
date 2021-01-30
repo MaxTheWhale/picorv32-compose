@@ -7,10 +7,10 @@ all: example.bin
 ## -------------------
 ## firmware generation
 
-firmware.elf: init.S main.S firmware.lds
+firmware.elf: init.S main.c uart.c firmware.lds
 	$(TOOLCHAIN_PREFIX)gcc \
 		-march=rv32i -Os -ffreestanding -nostdlib \
-		-o $@ init.S main.S \
+		-o $@ init.S main.c uart.c \
 		--std=gnu99 -Wl,-Bstatic,-T,firmware.lds,-Map,firmware.map,--strip-debug
 	chmod -x $@
 
@@ -19,7 +19,7 @@ firmware.bin: firmware.elf
 	chmod -x $@
 
 firmware.hex: firmware.bin
-	python3 makehex.py $< 128 > $@
+	python3 makehex.py $< 1792 > $@
 
 ## ------------------------------
 ## main flow: synth/p&r/bitstream

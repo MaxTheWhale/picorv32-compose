@@ -12,4 +12,5 @@ set_io --warn-no-port lcol1  A12
 set_io --warn-no-port lcol2  D10
 set_io --warn-no-port lcol3  A6
 set_io --warn-no-port lcol4  C5
+set_io --warn-no-port uart_tx   M1
 set_io --warn-no-port clk    P7
