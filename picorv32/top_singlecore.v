@@ -1,4 +1,3 @@
-`timescale 1 ns / 1 ps
 `include "../cores/LedDisplay.v"
 `include "../cores/uart.v"
 
@@ -18,12 +17,10 @@ module top (
 			resetn_counter <= resetn_counter + 1;
 	end
 
-
     // -------------------------------
 	// LED Display
 
 	reg [31:0] leds = 32'b0;
-
 	reg [2:0] brightness = 3'b111;
 
 	LedDisplay display (
@@ -41,33 +38,30 @@ module top (
 		.lcol3,
 		.lcol4,
 
-		.leds1(leds[7:0]),
-		.leds2(leds[15:8]),
-		.leds3(leds[23:16]),
-		.leds4(leds[31:24]),
+		.leds1   (leds[ 7: 0]),
+		.leds2   (leds[15: 8]),
+		.leds3   (leds[23:16]),
+		.leds4   (leds[31:24]),
 		.leds_pwm(brightness)
 	);
 
 	// -------------------------------
 	// PicoRV32 Core
 
-	reg [31:0] mem_addr;
-	reg [31:0] mem_wdata;
-	wire mem_la_read;
-	wire mem_la_write;
-	reg mem_read = 0;
-	reg mem_write = 0;
-	reg [3:0] mem_wstrb;
-
-
 	wire [31:0] mem_la_addr;
 	wire [31:0] mem_la_wdata;
-	wire [3:0] mem_la_wstrb;
+	wire [ 3:0] mem_la_wstrb;
+	wire        mem_la_read;
+	wire        mem_la_write;
 
-	reg mem_ready;
+	reg [31:0] mem_addr;
+	reg [31:0] mem_wdata;
+	reg [ 3:0] mem_wstrb;
+	reg        mem_read = 0;
+	reg        mem_write = 0;
+
 	reg [31:0] mem_rdata;
-
-    wire trapped;
+	reg        mem_ready;
 
 	/* verilator lint_off PINMISSING */
 	picorv32 #(
@@ -79,28 +73,32 @@ module top (
 		.CATCH_ILLINSN(1),
         .HART_ID(0)
 	) cpu (
-		.clk      (clk      ),
-		.resetn   (resetn   ),
-		.mem_la_read(mem_la_read),
+		.clk         (clk      ),
+		.resetn      (resetn   ),
+		.mem_la_read (mem_la_read),
 		.mem_la_write(mem_la_write),
-		.mem_ready(mem_ready),
+		.mem_ready   (mem_ready),
 		.mem_la_addr (mem_la_addr ),
 		.mem_la_wdata(mem_la_wdata),
 		.mem_la_wstrb(mem_la_wstrb),
-		.mem_rdata(mem_rdata),
-        .trap(trapped)
+		.mem_rdata   (mem_rdata)
 	);
 	/* verilator lint_on PINMISSING */
 
+	// -------------------------------
+	// UART Transmitter
+
     reg [7:0] tx_data;
-	reg tx_send;
-	wire uart_ready;
+	reg       tx_send;
+
+	wire      tx_ready;
+
 	uart uart0 (
 		.clk12MHz(clk),
-		.tx(uart_tx),
+		.tx      (uart_tx),
 		.sendData(tx_data),
-		.sendReq(tx_send),
-		.ready(uart_ready)
+		.sendReq (tx_send),
+		.ready   (tx_ready)
 	);
 
 	// -------------------------------
@@ -114,17 +112,17 @@ module top (
 	always @(posedge clk) begin
 
 		if (mem_la_read || mem_la_write) begin
-			mem_addr <= mem_la_addr;
+			mem_addr  <= mem_la_addr;
 			mem_wdata <= mem_la_wdata;
-			mem_read <= mem_la_read;
+			mem_read  <= mem_la_read;
 			mem_write <= mem_la_write;
 			mem_write <= mem_la_write;
 			mem_wstrb <= mem_la_wstrb;
 		end
 
-        leds[31] <= trapped;
 		mem_ready <= 0;
-        tx_send <= 0;
+        tx_send   <= 0;
+
 		if (resetn && (mem_read || mem_write) && !mem_ready) begin
 			(* parallel_case *)
 			case (1)
@@ -144,16 +142,16 @@ module top (
 					mem_ready <= 1;
 				end
                 mem_read && mem_addr == 32'h2000_0000: begin
-					mem_rdata <= {31'b0, uart_ready};
+					mem_rdata <= {31'b0, tx_ready};
 					mem_ready <= 1;
 				end
                 mem_write && mem_addr == 32'h2000_0000: begin
-					tx_data <= mem_wdata[7:0];
-					tx_send <= 1;
+					tx_data   <= mem_wdata[7:0];
+					tx_send   <= 1;
 					mem_ready <= 1;
 				end
 			endcase
-			mem_read <= 0;
+			mem_read  <= 0;
 			mem_write <= 0;
 		end
 	end

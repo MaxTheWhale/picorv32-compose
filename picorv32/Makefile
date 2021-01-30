@@ -2,7 +2,7 @@ TOOLCHAIN_PREFIX = riscv32-unknown-elf-
 
 ICE40_SIM_CELLS=$(shell yosys-config --datdir/ice40/cells_sim.v)
 
-all: example.bin
+all: top.bin
 
 ## -------------------
 ## firmware generation
@@ -24,13 +24,13 @@ firmware.hex: firmware.bin
 ## ------------------------------
 ## main flow: synth/p&r/bitstream
 
-synth.json: example.v picorv32.v firmware.hex
+synth.json: top.v picorv32.v firmware.hex
 	yosys -v3 -l synth.log -p 'synth_ice40 -top top -json $@; write_verilog -attr2comment synth.v' $(filter %.v, $^)
 
-example.asc: synth.json example.pcf
-	nextpnr-ice40 --hx8k --package cb132 --json $< --pcf example.pcf --asc $@
+top.asc: synth.json top.pcf
+	nextpnr-ice40 --hx8k --package cb132 --json $< --pcf top.pcf --asc $@
 
-example.bin: example.asc
+top.bin: top.asc
 	icepack $< $@
 
 ## ------
@@ -38,7 +38,7 @@ example.bin: example.asc
 
 clean:
 	rm -f firmware.elf firmware.map firmware.bin firmware.hex
-	rm -f synth.log synth.v synth.json route.v example.asc example.bin
-	rm -f example_tb.vvp synth_tb.vvp route_tb.vvp example.vcd
+	rm -f synth.log synth.v synth.json route.v top.asc top.bin
+	rm -f example_tb.vvp synth_tb.vvp route_tb.vvp top.vcd
 
 .PHONY: all clean

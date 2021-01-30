@@ -21,6 +21,9 @@
 /* verilator lint_off PINMISSING */
 /* verilator lint_off CASEOVERLAP */
 /* verilator lint_off CASEINCOMPLETE */
+/* verilator lint_off DECLFILENAME */
+/* verilator lint_off UNUSED */
+/* verilator lint_off BLKSEQ */
 
 `timescale 1 ns / 1 ps
 // `default_nettype none
