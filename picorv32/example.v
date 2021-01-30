@@ -51,35 +51,46 @@ module top (
 	// -------------------------------
 	// PicoRV32 Core
 
-	wire mem_valid;
-	wire [31:0] mem_addr;
-	wire [31:0] mem_wdata;
-	wire [3:0] mem_wstrb;
+	reg [31:0] mem_addr;
+	reg [31:0] mem_wdata;
+	wire mem_la_read;
+	wire mem_la_write;
+	reg mem_read = 0;
+	reg mem_write = 0;
+	reg [3:0] mem_wstrb;
+
+
+	wire [31:0] mem_la_addr;
+	wire [31:0] mem_la_wdata;
+	wire [3:0] mem_la_wstrb;
 
 	reg mem_ready;
 	reg [31:0] mem_rdata;
 
     wire trapped;
 
+	/* verilator lint_off PINMISSING */
 	picorv32 #(
 		.ENABLE_COUNTERS(1),
 		.LATCHED_MEM_RDATA(1),
 		.TWO_STAGE_SHIFT(0),
 		.TWO_CYCLE_ALU(0),
 		.CATCH_MISALIGN(1),
-		.CATCH_ILLINSN(0),
+		.CATCH_ILLINSN(1),
         .HART_ID(0)
 	) cpu (
 		.clk      (clk      ),
 		.resetn   (resetn   ),
-		.mem_valid(mem_valid),
+		.mem_la_read(mem_la_read),
+		.mem_la_write(mem_la_write),
 		.mem_ready(mem_ready),
-		.mem_addr (mem_addr ),
-		.mem_wdata(mem_wdata),
-		.mem_wstrb(mem_wstrb),
+		.mem_la_addr (mem_la_addr ),
+		.mem_la_wdata(mem_la_wdata),
+		.mem_la_wstrb(mem_la_wstrb),
 		.mem_rdata(mem_rdata),
         .trap(trapped)
 	);
+	/* verilator lint_on PINMISSING */
 
     reg [7:0] tx_data;
 	reg tx_send;
@@ -101,37 +112,49 @@ module top (
 	initial $readmemh("firmware.hex", memory);
 
 	always @(posedge clk) begin
+
+		if (mem_la_read || mem_la_write) begin
+			mem_addr <= mem_la_addr;
+			mem_wdata <= mem_la_wdata;
+			mem_read <= mem_la_read;
+			mem_write <= mem_la_write;
+			mem_write <= mem_la_write;
+			mem_wstrb <= mem_la_wstrb;
+		end
+
         leds[31] <= trapped;
 		mem_ready <= 0;
         tx_send <= 0;
-		if (resetn && mem_valid && !mem_ready) begin
+		if (resetn && (mem_read || mem_write) && !mem_ready) begin
 			(* parallel_case *)
 			case (1)
-				!(|mem_wstrb) && (mem_addr >> 2) < MEM_SIZE: begin
+				mem_read && (mem_addr >> 2) < MEM_SIZE: begin
 					mem_rdata <= memory[mem_addr >> 2];
 					mem_ready <= 1;
 				end
-				|mem_wstrb && (mem_addr >> 2) < MEM_SIZE: begin
+				mem_write && (mem_addr >> 2) < MEM_SIZE: begin
 					if (mem_wstrb[0]) memory[mem_addr >> 2][ 7: 0] <= mem_wdata[ 7: 0];
 					if (mem_wstrb[1]) memory[mem_addr >> 2][15: 8] <= mem_wdata[15: 8];
 					if (mem_wstrb[2]) memory[mem_addr >> 2][23:16] <= mem_wdata[23:16];
 					if (mem_wstrb[3]) memory[mem_addr >> 2][31:24] <= mem_wdata[31:24];
 					mem_ready <= 1;
 				end
-				|mem_wstrb && mem_addr == 32'h1000_0000: begin
+				mem_write && mem_addr == 32'h1000_0000: begin
 					leds[7:0] <= mem_wdata[7:0];
 					mem_ready <= 1;
 				end
-                !(|mem_wstrb) && mem_addr == 32'h2000_0000: begin
+                mem_read && mem_addr == 32'h2000_0000: begin
 					mem_rdata <= {31'b0, uart_ready};
 					mem_ready <= 1;
 				end
-                |mem_wstrb && mem_addr == 32'h2000_0000: begin
+                mem_write && mem_addr == 32'h2000_0000: begin
 					tx_data <= mem_wdata[7:0];
 					tx_send <= 1;
 					mem_ready <= 1;
 				end
 			endcase
+			mem_read <= 0;
+			mem_write <= 0;
 		end
 	end
 endmodule
