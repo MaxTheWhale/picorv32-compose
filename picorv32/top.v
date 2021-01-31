@@ -8,7 +8,7 @@ module top (
 	output lcol1, lcol2, lcol3, lcol4, uart_tx
 );
 
-	localparam N_CORES = 4;
+	localparam N_CORES = 2;
 	localparam N_CORES_BITS = (N_CORES == 4) ? 2 : 1;
 
 	// -------------------------------
