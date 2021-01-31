@@ -63,12 +63,12 @@ module top (
 	wire        mem_la_read;
 	wire        mem_la_write;
 
-	reg [3:0] mem_addr_high;
+	reg [3:0]          mem_addr_high;
 	reg [MEM_BITS-1:0] mem_addr_low;
-	reg [31:0] mem_wdata;
-	reg [ 3:0] mem_wstrb;
-	reg        mem_read = 0;
-	reg        mem_write = 0;
+	reg [31:0]         mem_wdata;
+	reg [ 3:0]         mem_wstrb;
+	reg                mem_read = 0;
+	reg                mem_write = 0;
 
 	reg [31:0] mem_rdata;
 	reg        mem_ready;
@@ -118,7 +118,6 @@ module top (
 			mem_addr_high <= mem_la_addr[31:28];
 			mem_wdata <= mem_la_wdata;
 			mem_read  <= mem_la_read;
-			mem_write <= mem_la_write;
 			mem_write <= mem_la_write;
 			mem_wstrb <= mem_la_wstrb;
 		end
