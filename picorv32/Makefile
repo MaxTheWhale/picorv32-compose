@@ -4,6 +4,8 @@ ICE40_SIM_CELLS=$(shell yosys-config --datdir/ice40/cells_sim.v)
 
 all: top.bin
 
+singlecore: top_singlecore.bin
+
 ## -------------------
 ## firmware generation
 
@@ -31,6 +33,15 @@ top.asc: synth.json top.pcf
 	nextpnr-ice40 --hx8k --package cb132 --json $< --pcf top.pcf --asc $@
 
 top.bin: top.asc
+	icepack $< $@
+
+synth_singlecore.json: top_singlecore.v picorv32.v firmware.hex
+	yosys -v3 -l synth.log -p 'synth_ice40 -top top -json $@; write_verilog -attr2comment synth.v' $(filter %.v, $^)
+
+top_singlecore.asc: synth_singlecore.json top.pcf
+	nextpnr-ice40 --hx8k --package cb132 --json $< --pcf top.pcf --asc $@
+
+top_singlecore.bin: top_singlecore.asc
 	icepack $< $@
 
 ## ------
