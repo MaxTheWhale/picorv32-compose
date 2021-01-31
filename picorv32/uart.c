@@ -7,7 +7,21 @@ void print_char(char c) {
     *uart_tx = c;
 }
 
-void puts(const char *s) {
+void print_string(const char *s) {
     for (int i = 0; s[i] != '\0'; i++) print_char(s[i]);
-    print_char('\n');
+}
+
+void print_int(unsigned int x) {
+    int length = 1;
+    int base = 10;
+    while (x >= base) {
+        base *= 10;
+        length++;
+    }
+    for (int i = 0; i < length; i++) {
+        base /= 10;
+        unsigned int digit = x / base;
+        x -= digit * base;
+        print_char('0' + (char)digit);
+    }
 }

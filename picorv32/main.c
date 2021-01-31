@@ -12,7 +12,7 @@ uint32_t get_hart_id() {
 void output(uint8_t c)
 {
 	*(volatile char*)(0x10000000 + get_hart_id()) = c;
-    if (get_hart_id() == 0) puts("Hello world!");
+    if (get_hart_id() == 0) print_string("Hello world!\n");
 }
 
 uint8_t gray_encode_simple(uint8_t c)

@@ -26,9 +26,8 @@ NOTE:   String length must be evenly divisible by 16byte (str_len % 16 == 0)
 /*****************************************************************************/
 /* Includes:                                                                 */
 /*****************************************************************************/
-#include <string.h> // CBC mode, for memset
 #include <stdint.h>
-#include <stdio.h>
+#include "uart.h"
 
 /*****************************************************************************/
 /* Defines:                                                                  */
@@ -298,22 +297,28 @@ int __attribute__((optimize("O0"))) main() {
     struct AES_ctx ctx;
 
     int cycles_start, cycles_end;
-    asm("rdcycle %0" : "=r"(cycles_start) : : );
+    asm ("rdcycle %0" : "=r"(cycles_start) : : );
     AES_init_ctx(&ctx, key);
-    asm("rdcycle %0" : "=r"(cycles_end) : : );
-    printf("Key expansion took %d cycles\n", cycles_end - cycles_start);
-    asm("rdcycle %0" : "=r"(cycles_start) : : );
+    asm ("rdcycle %0" : "=r"(cycles_end) : : );
+    print_string("Key expansion took ");
+    print_int(cycles_end - cycles_start);
+    print_string(" cycles\n");
+    asm ("rdcycle %0" : "=r"(cycles_start) : : );
     AES_ECB_encrypt(&ctx, in);
-    asm("rdcycle %0" : "=r"(cycles_end) : : );
-    printf("Encrypting one block took %d cycles\n", cycles_end - cycles_start);
+    asm ("rdcycle %0" : "=r"(cycles_end) : : );
+    print_string("Encrypting one block took ");
+    print_int(cycles_end - cycles_start);
+    print_string(" cycles\n");
 
-    printf("ECB encrypt: ");
-
-    if (0 == memcmp((char*) out, (char*) in, 16)) {
-        printf("SUCCESS!\n");
+    int failed = 0;
+    for (int i = 0; i < 16; i++) {
+        if (in[i] != out[i]) failed = 1;
+    }
+    if (!failed) {
+        print_string("ECB encrypt: SUCCESS!\n");
 	return(0);
     } else {
-        printf("FAILURE!\n");
+        print_string("ECB encrypt: FAILURE!\n");
 	return(1);
     }
 }

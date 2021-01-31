@@ -1,3 +1,5 @@
 void print_char(char c);
 
-void puts(const char *s);
+void print_string(const char *s);
+
+void print_int(unsigned int x);
