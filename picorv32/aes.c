@@ -253,7 +253,7 @@ static void MixColumns(state_t* state)
       ((y>>4 & 1) * xtime(xtime(xtime(xtime(x))))))   \
 
 // Cipher is the main function that encrypts the PlainText.
-static void Cipher(state_t* state, const uint8_t* RoundKey)
+static void __attribute__((optimize("O2"))) Cipher(state_t* state, const uint8_t* RoundKey)
 {
     uint8_t round = 0;
 
@@ -295,8 +295,15 @@ uint32_t get_hart_id() {
     return id;
 }
 
+void print_stats(int cycles, int instructions) {
+    print_int(cycles);
+    print_string(" cycles and ");
+    print_int(instructions);
+    print_string(" instructions\n");
+}
+
 int __attribute__((optimize("O0"))) main() {
-    if (get_hart_id() != 0) return;
+    if (get_hart_id() != 0) return 0;
 
     uint8_t key[] = { 0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c };
     uint8_t out[] = { 0x3a, 0xd7, 0x7b, 0xb4, 0x0d, 0x7a, 0x36, 0x60, 0xa8, 0x9e, 0xca, 0xf3, 0x24, 0x66, 0xef, 0x97 };
@@ -305,18 +312,25 @@ int __attribute__((optimize("O0"))) main() {
     struct AES_ctx ctx;
 
     int cycles_start, cycles_end;
+    int instrs_start, instrs_end;
+
+    asm ("rdinstret %0" : "=r"(instrs_start) : : );
     asm ("rdcycle %0" : "=r"(cycles_start) : : );
     AES_init_ctx(&ctx, key);
     asm ("rdcycle %0" : "=r"(cycles_end) : : );
+    asm ("rdinstret %0" : "=r"(instrs_end) : : );
+
     print_string("Key expansion took ");
-    print_int(cycles_end - cycles_start);
-    print_string(" cycles\n");
+    print_stats(cycles_end - cycles_start, instrs_end - instrs_start - 2);
+
+    asm ("rdinstret %0" : "=r"(instrs_start) : : );
     asm ("rdcycle %0" : "=r"(cycles_start) : : );
     AES_ECB_encrypt(&ctx, in);
     asm ("rdcycle %0" : "=r"(cycles_end) : : );
+    asm ("rdinstret %0" : "=r"(instrs_end) : : );
+
     print_string("Encrypting one block took ");
-    print_int(cycles_end - cycles_start);
-    print_string(" cycles\n");
+    print_stats(cycles_end - cycles_start, instrs_end - instrs_start - 2);
 
     int failed = 0;
     for (int i = 0; i < 16; i++) {
