@@ -4,4 +4,4 @@
 *.elf
 *.map
 *.log
-synth.v
+build

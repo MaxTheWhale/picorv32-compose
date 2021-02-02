@@ -1,5 +1,5 @@
-`include "../cores/LedDisplay.v"
-`include "../cores/uart.v"
+`include "led_display.v"
+`include "uart.v"
 
 module top (
 	input clk,
@@ -23,7 +23,7 @@ module top (
 	reg [31:0] leds = 32'b0;
 	reg [2:0] brightness = 3'b111;
 
-	LedDisplay display (
+	led_display display (
 		.clk12MHz(clk),
 		.led1,
 		.led2,
@@ -52,7 +52,7 @@ module top (
 	localparam MEM_SIZE = 2048;
 	localparam MEM_BITS = $clog2(MEM_SIZE);
 	reg [31:0] memory [0:MEM_SIZE-1];
-	initial $readmemh("firmware.hex", memory);
+	initial $readmemh(`FIRMWARE, memory);
 
 	// -------------------------------
 	// PicoRV32 Core

@@ -1,6 +1,5 @@
-`timescale 1 ns / 1 ps
-`include "../cores/LedDisplay.v"
-`include "../cores/uart.v"
+`include "led_display.v"
+`include "uart.v"
 
 module top (
 	input clk,
@@ -28,7 +27,7 @@ module top (
 	reg [31:0] leds = 32'b0;
 	reg [2:0] brightness = 3'b111;
 
-	LedDisplay display (
+	led_display display (
 		.clk12MHz(clk),
 		.led1,
 		.led2,
@@ -57,7 +56,7 @@ module top (
 	localparam MEM_SIZE = 2048;
 	localparam MEM_BITS = $clog2(MEM_SIZE);
 	reg [31:0] memory [0:MEM_SIZE-1];
-	initial $readmemh("firmware.hex", memory);
+	initial $readmemh(`FIRMWARE, memory);
 
 	wire [N_CORES - 1:0]    mem_la_read;
 	wire [N_CORES - 1:0]    mem_la_write;
@@ -184,99 +183,4 @@ module top (
 		end
 	end
 
-	// always @(posedge clk) begin
-
-	// 	leds[27] <= trap_wire;
-
-	// 	mem_arb_counter <= mem_arb_counter + 1;
-	// 	mem_la_arb_counter <= mem_la_arb_counter + 1;
-
-	// 	if (MULTICORE) begin
-	// 		mem_addr_low <= mem_la_addr[32*mem_la_arb_counter + 12 -: 11];
-	// 		mem_addr_high <= mem_la_addr[32*mem_la_arb_counter + 31 -: 4];
-	// 		mem_wdata <= mem_la_wdata[32*mem_la_arb_counter + 31 -: 32];
-	// 		mem_wstrb <= mem_la_wstrb[4*mem_la_arb_counter + 3 -: 4];
-	// 	end else begin
-	// 		mem_addr_low <= mem_la_addr[12:2];
-	// 		mem_addr_high <= mem_la_addr[31:28];
-	// 		mem_wdata <= mem_la_wdata[31:0];
-	// 		mem_wstrb <= mem_la_wstrb[3:0];
-	// 	end
-
-	// 	mem_ready <= 0;
-	// 	tx_send <= 0;
-
-	// 	if (MULTICORE) begin
-			
-	// 		if (resetn && mem_valid[mem_arb_counter] && !mem_ready[mem_arb_counter]) begin
-	// 			(* parallel_case *)
-	// 			case (1)
-	// 				!(|mem_wstrb) && (mem_addr_high == 4'h0): begin
-	// 					mem_rdata[32*mem_arb_counter + 31 -: 32] <= memory[mem_addr_low];
-	// 					mem_ready[mem_arb_counter] <= 1;	
-	// 				end
-	// 				|mem_wstrb && (mem_addr_high == 4'h0): begin
-	// 					if (mem_wstrb[0]) memory[mem_addr_low][ 7: 0] <= mem_wdata[ 7: 0];
-	// 					if (mem_wstrb[1]) memory[mem_addr_low][15: 8] <= mem_wdata[15: 8];
-	// 					if (mem_wstrb[2]) memory[mem_addr_low][23:16] <= mem_wdata[23:16];
-	// 					if (mem_wstrb[3]) memory[mem_addr_low][31:24] <= mem_wdata[31:24];
-	// 					mem_ready[mem_arb_counter] <= 1;
-	// 					if (mem_arb_counter == 1) leds[26:24] <= mem_addr_low[10: 8];
-	// 					if (mem_arb_counter == 1) leds[23:16] <= mem_addr_low[ 7: 0];
-	// 				end
-	// 				|mem_wstrb && (mem_addr_high == 4'h1): begin
-	// 					leds[8*mem_addr_low[0] + 7 -: 8] <= mem_wdata[7:0];
-	// 					mem_ready[mem_arb_counter] <= 1;
-	// 				end
-	// 				!(|mem_wstrb) && (mem_addr_high == 4'h2): begin
-	// 					mem_ready[mem_arb_counter] <= 1;
-	// 					mem_rdata[32*mem_arb_counter + 31 -: 32] <= {31'b0, uart_ready};
-	// 				end
-	// 				|mem_wstrb && (mem_addr_high == 4'h2): begin
-	// 					tx_data <= mem_wdata[7:0];
-	// 					tx_send <= 1;
-	// 					mem_ready[mem_arb_counter] <= 1;
-	// 				end
-	// 			endcase
-	// 		end
-
-	// 	end else begin
-			
-	// 		if (resetn && mem_valid[0] && !mem_ready[0]) begin
-	// 			leds[31:28] <= mem_wstrb;
-	// 			leds[26:24] <= mem_addr_low[10: 8];
-	// 			leds[23:16] <= mem_addr_low[ 7: 0];
-	// 			leds[15:8] <= mem_wdata[ 7: 0];
-	// 			(* parallel_case *)
-	// 			case (1)
-	// 				!(|mem_wstrb) && (mem_addr_high == 4'h0): begin
-	// 					mem_rdata[31:0] <= memory[mem_addr_low];
-	// 					mem_ready <= 1;	
-	// 				end
-	// 				|mem_wstrb && (mem_addr_high == 4'h0): begin
-	// 					if (mem_wstrb[0]) memory[mem_addr_low][ 7: 0] <= mem_wdata[ 7: 0];
-	// 					if (mem_wstrb[1]) memory[mem_addr_low][15: 8] <= mem_wdata[15: 8];
-	// 					if (mem_wstrb[2]) memory[mem_addr_low][23:16] <= mem_wdata[23:16];
-	// 					if (mem_wstrb[3]) memory[mem_addr_low][31:24] <= mem_wdata[31:24];
-	// 					mem_ready <= 1;
-	// 				end
-	// 				|mem_wstrb && (mem_addr_high == 4'h1): begin
-	// 					leds[7:0] <= mem_wdata[7:0];
-	// 					mem_ready <= 1;
-	// 				end
-	// 				!(|mem_wstrb) && (mem_addr_high == 4'h2): begin
-	// 					mem_rdata[31:0] <= {31'b0, uart_ready};
-	// 					mem_ready <= 1;
-	// 				end
-	// 				|mem_wstrb && (mem_addr_high == 4'h2): begin
-	// 					tx_data <= mem_wdata[7:0];
-	// 					tx_send <= 1;
-	// 					mem_ready <= 1;
-	// 				end
-	// 			endcase
-	// 		end
-
-	// 	end
-		
-	// end
 endmodule

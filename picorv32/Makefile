@@ -1,55 +1,57 @@
 TOOLCHAIN_PREFIX = riscv32-unknown-elf-
 
-ICE40_SIM_CELLS=$(shell yosys-config --datdir/ice40/cells_sim.v)
+C_SOURCE_DIR = src
+HDL_SOURCE_DIR = verilog
+BUILD_DIR = build
+FIRMWARE = "\"$(BUILD_DIR)/firmware.hex\""
 
-all: top.bin
+multicore: $(BUILD_DIR)/multicore.bin
 
-singlecore: top_singlecore.bin
+singlecore: $(BUILD_DIR)/singlecore.bin
 
 ## -------------------
 ## firmware generation
 
-firmware.elf: init.S multi_arithmetic.S aes.c gray.c stats.S stats.c uart.c main.c firmware.lds
+$(BUILD_DIR)/firmware.elf: $(C_SOURCE_DIR)/*.c $(C_SOURCE_DIR)/*.S firmware.lds
+	mkdir -p $(BUILD_DIR)
 	$(TOOLCHAIN_PREFIX)gcc \
 		-march=rv32i -Os -ffreestanding -nostdlib \
-		-o $@ init.S multi_arithmetic.S aes.c gray.c stats.S stats.c uart.c main.c \
-		--std=gnu99 -lgcc -Wl,-Bstatic,-T,firmware.lds,-Map,firmware.map,--strip-debug
+		-o $@ $(filter %.c, $^) $(filter %.S, $^) \
+		--std=gnu99 -lgcc -Wl,-Bstatic,-T,firmware.lds,--strip-debug
 	chmod -x $@
 
-firmware.bin: firmware.elf
+$(BUILD_DIR)/firmware.bin: $(BUILD_DIR)/firmware.elf
 	$(TOOLCHAIN_PREFIX)objcopy -O binary $< $@
 	chmod -x $@
 
-firmware.hex: firmware.bin
+$(BUILD_DIR)/firmware.hex: $(BUILD_DIR)/firmware.bin
 	python3 makehex.py $< 1792 > $@
 
 ## ------------------------------
 ## main flow: synth/p&r/bitstream
 
-synth.json: top.v picorv32.v firmware.hex
-	yosys -v3 -l synth.log -p 'synth_ice40 -top top -json $@; write_verilog -attr2comment synth.v' $(filter %.v, $^)
+$(BUILD_DIR)/multicore.json: $(HDL_SOURCE_DIR)/multicore.v $(HDL_SOURCE_DIR)/picorv32.v $(BUILD_DIR)/firmware.hex
+	yosys -DFIRMWARE=$(FIRMWARE) -v3 -p 'synth_ice40 -top top -json $@' $(filter %.v, $^)
 
-top.asc: synth.json top.pcf
+$(BUILD_DIR)/multicore.asc: $(BUILD_DIR)/multicore.json top.pcf
 	nextpnr-ice40 --hx8k --package cb132 --json $< --pcf top.pcf --asc $@
 
-top.bin: top.asc
+$(BUILD_DIR)/multicore.bin: $(BUILD_DIR)/multicore.asc
 	icepack $< $@
 
-synth_singlecore.json: top_singlecore.v picorv32.v firmware.hex
-	yosys -v3 -l synth.log -p 'synth_ice40 -top top -json $@; write_verilog -attr2comment synth.v' $(filter %.v, $^)
+$(BUILD_DIR)/singlecore.json: $(HDL_SOURCE_DIR)/singlecore.v $(HDL_SOURCE_DIR)/picorv32.v $(BUILD_DIR)/firmware.hex
+	yosys -DFIRMWARE=$(FIRMWARE) -v3 -p 'synth_ice40 -top top -json $@' $(filter %.v, $^)
 
-top_singlecore.asc: synth_singlecore.json top.pcf
+$(BUILD_DIR)/singlecore.asc: $(BUILD_DIR)/singlecore.json top.pcf
 	nextpnr-ice40 --hx8k --package cb132 --json $< --pcf top.pcf --asc $@
 
-top_singlecore.bin: top_singlecore.asc
+$(BUILD_DIR)/singlecore.bin: $(BUILD_DIR)/singlecore.asc
 	icepack $< $@
 
 ## ------
 ## el fin
 
 clean:
-	rm -f firmware.elf firmware.map firmware.bin firmware.hex
-	rm -f synth.log synth.v synth.json route.v top.asc top.bin
-	rm -f example_tb.vvp synth_tb.vvp route_tb.vvp top.vcd
+	rm -r $(BUILD_DIR)
 
-.PHONY: all clean
+.PHONY: clean
