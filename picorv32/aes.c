@@ -26,21 +26,8 @@ NOTE:   String length must be evenly divisible by 16byte (str_len % 16 == 0)
 /*****************************************************************************/
 /* Includes:                                                                 */
 /*****************************************************************************/
-#include <stdint.h>
+#include "aes.h"
 #include "uart.h"
-
-/*****************************************************************************/
-/* Defines:                                                                  */
-/*****************************************************************************/
-#define AES_BLOCKLEN 16 // Block length in bytes - AES is 128b block only
-
-#define AES_KEYLEN 16   // Key length in bytes
-#define AES_keyExpSize 176
-
-struct AES_ctx
-{
-    uint8_t RoundKey[AES_keyExpSize];
-};
 
 // The number of columns comprising a state in AES. This is a constant in AES. Value=4
 #define Nb 4
@@ -83,9 +70,7 @@ static const uint8_t sbox[256] = {
 static const uint8_t Rcon[11] = {
     0x8d, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36 };
 
-/*****************************************************************************/
-/* Private functions:                                                        */
-/*****************************************************************************/
+
 /*
 static uint8_t getSBoxValue(uint8_t num)
 {
@@ -242,15 +227,11 @@ static void MixColumns(state_t* state)
 }
 
 // Multiply is used to multiply numbers in the field GF(2^8)
-// Note: The last call to xtime() is unneeded, but often ends up generating a smaller binary
-//       The compiler seems to be able to vectorize the operation better this way.
-//       See https://github.com/kokke/tiny-AES-c/pull/34
 #define Multiply(x, y)                                \
       (  ((y & 1) * x) ^                              \
       ((y>>1 & 1) * xtime(x)) ^                       \
       ((y>>2 & 1) * xtime(xtime(x))) ^                \
       ((y>>3 & 1) * xtime(xtime(xtime(x)))) ^         \
-      ((y>>4 & 1) * xtime(xtime(xtime(xtime(x))))))   \
 
 // Cipher is the main function that encrypts the PlainText.
 static void __attribute__((optimize("O2"))) Cipher(state_t* state, const uint8_t* RoundKey)
@@ -278,69 +259,8 @@ static void __attribute__((optimize("O2"))) Cipher(state_t* state, const uint8_t
     AddRoundKey(Nr, state, RoundKey);
 }
 
-/*****************************************************************************/
-/* Public functions:                                                         */
-/*****************************************************************************/
-
-
 void AES_ECB_encrypt(const struct AES_ctx* ctx, uint8_t* buf)
 {
     // The next function call encrypts the PlainText with the Key using AES algorithm.
     Cipher((state_t*)buf, ctx->RoundKey);
-}
-
-uint32_t get_hart_id() {
-    uint32_t id;
-    asm ("csrr %0, 0xf10" : "=r"(id) : : );
-    return id;
-}
-
-void print_stats(int cycles, int instructions) {
-    print_int(cycles);
-    print_string(" cycles and ");
-    print_int(instructions);
-    print_string(" instructions\n");
-}
-
-int __attribute__((optimize("O0"))) main() {
-    if (get_hart_id() != 0) return 0;
-
-    uint8_t key[] = { 0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c };
-    uint8_t out[] = { 0x3a, 0xd7, 0x7b, 0xb4, 0x0d, 0x7a, 0x36, 0x60, 0xa8, 0x9e, 0xca, 0xf3, 0x24, 0x66, 0xef, 0x97 };
-
-    uint8_t in[]  = { 0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96, 0xe9, 0x3d, 0x7e, 0x11, 0x73, 0x93, 0x17, 0x2a };
-    struct AES_ctx ctx;
-
-    int cycles_start, cycles_end;
-    int instrs_start, instrs_end;
-
-    asm ("rdinstret %0" : "=r"(instrs_start) : : );
-    asm ("rdcycle %0" : "=r"(cycles_start) : : );
-    AES_init_ctx(&ctx, key);
-    asm ("rdcycle %0" : "=r"(cycles_end) : : );
-    asm ("rdinstret %0" : "=r"(instrs_end) : : );
-
-    print_string("Key expansion took ");
-    print_stats(cycles_end - cycles_start, instrs_end - instrs_start - 2);
-
-    asm ("rdinstret %0" : "=r"(instrs_start) : : );
-    asm ("rdcycle %0" : "=r"(cycles_start) : : );
-    AES_ECB_encrypt(&ctx, in);
-    asm ("rdcycle %0" : "=r"(cycles_end) : : );
-    asm ("rdinstret %0" : "=r"(instrs_end) : : );
-
-    print_string("Encrypting one block took ");
-    print_stats(cycles_end - cycles_start, instrs_end - instrs_start - 2);
-
-    int failed = 0;
-    for (int i = 0; i < 16; i++) {
-        if (in[i] != out[i]) failed = 1;
-    }
-    if (!failed) {
-        print_string("ECB encrypt: SUCCESS!\n");
-	return(0);
-    } else {
-        print_string("ECB encrypt: FAILURE!\n");
-	return(1);
-    }
 }

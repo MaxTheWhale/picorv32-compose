@@ -12,8 +12,8 @@ void print_string(const char *s) {
 }
 
 void print_int(unsigned int x) {
-    int length = 1;
-    int base = 10;
+    unsigned int length = 1;
+    unsigned int base = 10;
     while (x >= base) {
         base *= 10;
         length++;

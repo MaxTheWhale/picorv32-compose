@@ -9,10 +9,10 @@ singlecore: top_singlecore.bin
 ## -------------------
 ## firmware generation
 
-firmware.elf: init.S aes.c uart.c firmware.lds
+firmware.elf: init.S multi_arithmetic.S aes.c gray.c stats.S stats.c uart.c main.c firmware.lds
 	$(TOOLCHAIN_PREFIX)gcc \
 		-march=rv32i -Os -ffreestanding -nostdlib \
-		-o $@ init.S aes.c uart.c \
+		-o $@ init.S multi_arithmetic.S aes.c gray.c stats.S stats.c uart.c main.c \
 		--std=gnu99 -lgcc -Wl,-Bstatic,-T,firmware.lds,-Map,firmware.map,--strip-debug
 	chmod -x $@
 
