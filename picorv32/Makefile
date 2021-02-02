@@ -5,6 +5,9 @@ HDL_SOURCE_DIR = verilog
 BUILD_DIR = build
 FIRMWARE = "\"$(BUILD_DIR)/firmware.hex\""
 
+MEM_SIZE = 8192
+STACK_SIZE = 256
+
 multicore: $(BUILD_DIR)/multicore.bin
 
 singlecore: $(BUILD_DIR)/singlecore.bin
@@ -15,7 +18,7 @@ singlecore: $(BUILD_DIR)/singlecore.bin
 $(BUILD_DIR)/firmware.elf: $(C_SOURCE_DIR)/*.c $(C_SOURCE_DIR)/*.S firmware.lds
 	mkdir -p $(BUILD_DIR)
 	$(TOOLCHAIN_PREFIX)gcc \
-		-march=rv32i -Os -ffreestanding -nostdlib \
+		-march=rv32i -Os -ffreestanding -nostdlib -DMEM_SIZE=$(MEM_SIZE) -DSTACK_SIZE=$(STACK_SIZE) \
 		-o $@ $(filter %.c, $^) $(filter %.S, $^) \
 		--std=gnu99 -lgcc -Wl,-Bstatic,-T,firmware.lds,--strip-debug
 	chmod -x $@
@@ -31,7 +34,7 @@ $(BUILD_DIR)/firmware.hex: $(BUILD_DIR)/firmware.bin
 ## main flow: synth/p&r/bitstream
 
 $(BUILD_DIR)/multicore.json: $(HDL_SOURCE_DIR)/multicore.v $(HDL_SOURCE_DIR)/picorv32.v $(BUILD_DIR)/firmware.hex
-	yosys -DFIRMWARE=$(FIRMWARE) -v3 -p 'synth_ice40 -top top -json $@' $(filter %.v, $^)
+	yosys -DFIRMWARE=$(FIRMWARE) -DMEM_SIZE=$(MEM_SIZE) -v3 -p 'synth_ice40 -top top -json $@' $(filter %.v, $^)
 
 $(BUILD_DIR)/multicore.asc: $(BUILD_DIR)/multicore.json top.pcf
 	nextpnr-ice40 --hx8k --package cb132 --json $< --pcf top.pcf --asc $@
@@ -40,7 +43,7 @@ $(BUILD_DIR)/multicore.bin: $(BUILD_DIR)/multicore.asc
 	icepack $< $@
 
 $(BUILD_DIR)/singlecore.json: $(HDL_SOURCE_DIR)/singlecore.v $(HDL_SOURCE_DIR)/picorv32.v $(BUILD_DIR)/firmware.hex
-	yosys -DFIRMWARE=$(FIRMWARE) -v3 -p 'synth_ice40 -top top -json $@' $(filter %.v, $^)
+	yosys -DFIRMWARE=$(FIRMWARE) -DMEM_SIZE=$(MEM_SIZE) -v3 -p 'synth_ice40 -top top -json $@' $(filter %.v, $^)
 
 $(BUILD_DIR)/singlecore.asc: $(BUILD_DIR)/singlecore.json top.pcf
 	nextpnr-ice40 --hx8k --package cb132 --json $< --pcf top.pcf --asc $@

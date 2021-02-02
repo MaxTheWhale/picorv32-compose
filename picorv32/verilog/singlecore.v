@@ -48,10 +48,9 @@ module top (
 	// -------------------------------
 	// Memory/IO Interface
 
-	// 2048 32bit words = 8192 bytes memory
-	localparam MEM_SIZE = 2048;
-	localparam MEM_BITS = $clog2(MEM_SIZE);
-	reg [31:0] memory [0:MEM_SIZE-1];
+	localparam MEM_WORDS = `MEM_SIZE / 4;
+	localparam MEM_BITS = $clog2(MEM_WORDS);
+	reg [31:0] memory [0:MEM_WORDS-1];
 	initial $readmemh(`FIRMWARE, memory);
 
 	// -------------------------------
