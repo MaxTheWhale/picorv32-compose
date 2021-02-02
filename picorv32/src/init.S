@@ -2,7 +2,7 @@
 .global main
 
 /* set stack pointer */
-li sp, (MEM_SIZE * 4)
+li sp, MEM_SIZE
 
 /* adjust stack pointer by hart id (STACK_SIZE bytes per hart) */
 csrr t0, 0xF10
