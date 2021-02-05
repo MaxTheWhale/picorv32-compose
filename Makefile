@@ -3,7 +3,7 @@ TOOLCHAIN_PREFIX = riscv32-unknown-elf-
 C_SOURCE_DIR = src
 RTL_SOURCE_DIR = rtl
 BUILD_DIR = build
-FIRMWARE = "\"$(BUILD_DIR)/firmware.hex\""
+FIRMWARE = '"$(BUILD_DIR)/firmware.hex"'
 
 MEM_SIZE = 8192
 STACK_SIZE = 256
@@ -16,7 +16,6 @@ singlecore: $(BUILD_DIR)/singlecore.bin
 ## firmware generation
 
 $(BUILD_DIR)/firmware.elf: $(C_SOURCE_DIR)/*.c $(C_SOURCE_DIR)/*.S firmware.lds
-	mkdir -p $(BUILD_DIR)
 	$(TOOLCHAIN_PREFIX)gcc \
 		-march=rv32i -Os -ffreestanding -nostdlib -DMEM_SIZE=$(MEM_SIZE) -DSTACK_SIZE=$(STACK_SIZE) \
 		-o $@ $(filter %.c, $^) $(filter %.S, $^) \
@@ -55,6 +54,6 @@ $(BUILD_DIR)/singlecore.bin: $(BUILD_DIR)/singlecore.asc
 ## el fin
 
 clean:
-	rm -r $(BUILD_DIR)
+	@rm -f $(BUILD_DIR)/*.bin $(BUILD_DIR)/*.hex $(BUILD_DIR)/*.elf $(BUILD_DIR)/*.asc $(BUILD_DIR)/*.json
 
 .PHONY: clean
