@@ -1,7 +1,7 @@
 TOOLCHAIN_PREFIX = riscv32-unknown-elf-
 
 C_SOURCE_DIR = src
-HDL_SOURCE_DIR = verilog
+RTL_SOURCE_DIR = rtl
 BUILD_DIR = build
 FIRMWARE = "\"$(BUILD_DIR)/firmware.hex\""
 
@@ -33,7 +33,7 @@ $(BUILD_DIR)/firmware.hex: $(BUILD_DIR)/firmware.bin
 ## ------------------------------
 ## main flow: synth/p&r/bitstream
 
-$(BUILD_DIR)/multicore.json: $(HDL_SOURCE_DIR)/multicore.v $(HDL_SOURCE_DIR)/picorv32.v $(BUILD_DIR)/firmware.hex
+$(BUILD_DIR)/multicore.json: $(RTL_SOURCE_DIR)/multicore.v $(RTL_SOURCE_DIR)/picorv32.v $(BUILD_DIR)/firmware.hex
 	yosys -DFIRMWARE=$(FIRMWARE) -DMEM_SIZE=$(MEM_SIZE) -v3 -p 'synth_ice40 -top top -json $@' $(filter %.v, $^)
 
 $(BUILD_DIR)/multicore.asc: $(BUILD_DIR)/multicore.json top.pcf
@@ -42,7 +42,7 @@ $(BUILD_DIR)/multicore.asc: $(BUILD_DIR)/multicore.json top.pcf
 $(BUILD_DIR)/multicore.bin: $(BUILD_DIR)/multicore.asc
 	icepack $< $@
 
-$(BUILD_DIR)/singlecore.json: $(HDL_SOURCE_DIR)/singlecore.v $(HDL_SOURCE_DIR)/picorv32.v $(BUILD_DIR)/firmware.hex
+$(BUILD_DIR)/singlecore.json: $(RTL_SOURCE_DIR)/singlecore.v $(RTL_SOURCE_DIR)/picorv32.v $(BUILD_DIR)/firmware.hex
 	yosys -DFIRMWARE=$(FIRMWARE) -DMEM_SIZE=$(MEM_SIZE) -v3 -p 'synth_ice40 -top top -json $@' $(filter %.v, $^)
 
 $(BUILD_DIR)/singlecore.asc: $(BUILD_DIR)/singlecore.json top.pcf

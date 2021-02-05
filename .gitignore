@@ -1,5 +1,7 @@
-.idea
-obj_dir
-*.json
-*.asc
 *.bin
+*.hex
+*.asc
+*.elf
+*.map
+*.log
+build/*

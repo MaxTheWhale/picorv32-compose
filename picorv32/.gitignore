@@ -1,7 +1,0 @@
-*.bin
-*.hex
-*.asc
-*.elf
-*.map
-*.log
-build
