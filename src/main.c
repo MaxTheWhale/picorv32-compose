@@ -4,8 +4,18 @@
 
 uint32_t get_hart_id() {
     uint32_t id;
-    asm ("csrr %0, 0xf10" : "=r"(id) : : );
+    asm ("csrr %0, 0xf14" : "=r"(id) : : );
     return id;
+}
+
+uint32_t get_mcompose() {
+    uint32_t mcompose;
+    asm ("csrr %0, 0x7c0" : "=r"(mcompose) : : );
+    return mcompose;
+}
+
+void set_mcompose(uint32_t mcompose) {
+    asm volatile ("csrw 0x7c0, %0" : : "r"(mcompose) : );
 }
 
 int check_result(const void *a, const void *b, int n_bytes) {
@@ -21,6 +31,12 @@ int check_result(const void *a, const void *b, int n_bytes) {
 int __attribute__((optimize("O0"))) main()
 {
     if (get_hart_id() == 0) {
+
+        uint32_t mcomp = get_mcompose();
+        if (mcomp != 0) print_string("Reading mcompose failed!\n");
+        //set_mcompose(4);
+        mcomp = get_mcompose();
+        if (mcomp != 4) print_string("Writing mcompose failed!\n");
 
         #define NUM_WORDS 4
         unsigned int a[NUM_WORDS] = {0xdeadbeef, 0xab43032b, 0, 0};

@@ -66,6 +66,7 @@ module picorv32 #(
 	parameter [ 0:0] ENABLE_COUNTERS = 1,
 	parameter [ 0:0] ENABLE_COUNTERS64 = 1,
 	parameter [ 0:0] ENABLE_MHARTID = 0,
+	parameter [ 0:0] ENABLE_MCOMPOSE = 0,
 	parameter [ 0:0] ENABLE_REGS_16_31 = 1,
 	parameter [ 0:0] ENABLE_REGS_DUALPORT = 1,
 	parameter [ 0:0] LATCHED_MEM_RDATA = 0,
@@ -178,6 +179,7 @@ module picorv32 #(
 	localparam [35:0] TRACE_IRQ    = {4'b 1000, 32'b 0};
 
 	reg [63:0] count_cycle, count_instr;
+	reg [31:0] mcompose;
 	reg [31:0] reg_pc, reg_next_pc, reg_op1, reg_op2, reg_out;
 	reg [4:0] reg_sh;
 
@@ -653,7 +655,7 @@ module picorv32 #(
 	reg instr_lb, instr_lh, instr_lw, instr_lbu, instr_lhu, instr_sb, instr_sh, instr_sw;
 	reg instr_addi, instr_slti, instr_sltiu, instr_xori, instr_ori, instr_andi, instr_slli, instr_srli, instr_srai;
 	reg instr_add, instr_sub, instr_sll, instr_slt, instr_sltu, instr_xor, instr_srl, instr_sra, instr_or, instr_and;
-	reg instr_rdcycle, instr_rdcycleh, instr_rdinstr, instr_rdinstrh, instr_mhartid, instr_ecall_ebreak;
+	reg instr_rdcycle, instr_rdcycleh, instr_rdinstr, instr_rdinstrh, instr_mhartid, instr_mcompose, instr_ecall_ebreak;
 	reg instr_getq, instr_setq, instr_retirq, instr_maskirq, instr_waitirq, instr_timer;
 	wire instr_trap;
 
@@ -685,7 +687,7 @@ module picorv32 #(
 			instr_lb, instr_lh, instr_lw, instr_lbu, instr_lhu, instr_sb, instr_sh, instr_sw,
 			instr_addi, instr_slti, instr_sltiu, instr_xori, instr_ori, instr_andi, instr_slli, instr_srli, instr_srai,
 			instr_add, instr_sub, instr_sll, instr_slt, instr_sltu, instr_xor, instr_srl, instr_sra, instr_or, instr_and,
-			instr_rdcycle, instr_mhartid, instr_rdcycleh, instr_rdinstr, instr_rdinstrh,
+			instr_rdcycle, instr_mhartid, instr_mcompose, instr_rdcycleh, instr_rdinstr, instr_rdinstrh,
 			instr_getq, instr_setq, instr_retirq, instr_maskirq, instr_waitirq, instr_timer};
 
 	wire is_rdcycle_rdcycleh_rdinstr_rdinstrh_mhartid;
@@ -749,6 +751,7 @@ module picorv32 #(
 
 		if (instr_rdcycle)  new_ascii_instr = "rdcycle";
 		if (instr_mhartid)  new_ascii_instr = "mhartid";
+		if (instr_mcompose) new_ascii_instr = "mcompose";
 		if (instr_rdcycleh) new_ascii_instr = "rdcycleh";
 		if (instr_rdinstr)  new_ascii_instr = "rdinstr";
 		if (instr_rdinstrh) new_ascii_instr = "rdinstrh";
@@ -1087,7 +1090,8 @@ module picorv32 #(
 			instr_rdinstr  <=  (mem_rdata_q[6:0] == 7'b1110011 && mem_rdata_q[31:12] == 'b11000000001000000010) && ENABLE_COUNTERS;
 			instr_rdinstrh <=  (mem_rdata_q[6:0] == 7'b1110011 && mem_rdata_q[31:12] == 'b11001000001000000010) && ENABLE_COUNTERS && ENABLE_COUNTERS64;
 
-			instr_mhartid  <= (mem_rdata_q[6:0] == 7'b1110011 && mem_rdata_q[31:12] == 'b11110001000000000010) && ENABLE_MHARTID;
+			instr_mhartid  <= (mem_rdata_q[6:0] == 7'b1110011 && mem_rdata_q[31:12] == 'b11110001010000000010) && ENABLE_MHARTID;
+			instr_mcompose  <= (mem_rdata_q[6:0] == 7'b1110011 && mem_rdata_q[31:12] == 'b01111100000000000010) && ENABLE_MCOMPOSE && (HART_ID == 0);
 
 			instr_ecall_ebreak <= ((mem_rdata_q[6:0] == 7'b1110011 && !mem_rdata_q[31:21] && !mem_rdata_q[19:7]) ||
 					(COMPRESSED_ISA && mem_rdata_q[15:0] == 16'h9002));
@@ -1478,6 +1482,8 @@ module picorv32 #(
 			irq_state <= 0;
 			eoi <= 0;
 			timer <= 0;
+			if (ENABLE_MCOMPOSE && HART_ID == 0)
+				mcompose <= 0;
 			if (~STACKADDR) begin
 				latched_store <= 1;
 				latched_rd <= 2;
@@ -1640,6 +1646,11 @@ module picorv32 #(
 							instr_mhartid && ENABLE_MHARTID:
 								reg_out <= HART_ID;
 						endcase
+						latched_store <= 1;
+						cpu_state <= cpu_state_fetch;
+					end
+					(ENABLE_MCOMPOSE && HART_ID == 0) && instr_mcompose: begin
+						reg_out <= mcompose;
 						latched_store <= 1;
 						cpu_state <= cpu_state_fetch;
 					end

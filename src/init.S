@@ -5,7 +5,7 @@
 li sp, MEM_SIZE
 
 /* adjust stack pointer by hart id (STACK_SIZE bytes per hart) */
-csrr t0, 0xF10
+csrr t0, 0xF14
 li   t1, 0
 adjust_stack:
     beq  t0, t1, adjust_stack_end
