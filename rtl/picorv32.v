@@ -65,6 +65,7 @@
 module picorv32 #(
 	parameter [ 0:0] ENABLE_COUNTERS = 1,
 	parameter [ 0:0] ENABLE_COUNTERS64 = 1,
+	parameter [ 0:0] ENABLE_MHARTID = 0,
 	parameter [ 0:0] ENABLE_REGS_16_31 = 1,
 	parameter [ 0:0] ENABLE_REGS_DUALPORT = 1,
 	parameter [ 0:0] LATCHED_MEM_RDATA = 0,
@@ -1086,7 +1087,7 @@ module picorv32 #(
 			instr_rdinstr  <=  (mem_rdata_q[6:0] == 7'b1110011 && mem_rdata_q[31:12] == 'b11000000001000000010) && ENABLE_COUNTERS;
 			instr_rdinstrh <=  (mem_rdata_q[6:0] == 7'b1110011 && mem_rdata_q[31:12] == 'b11001000001000000010) && ENABLE_COUNTERS && ENABLE_COUNTERS64;
 
-			instr_mhartid  <= (mem_rdata_q[6:0] == 7'b1110011 && mem_rdata_q[31:12] == 'b11110001000000000010) && ENABLE_COUNTERS;
+			instr_mhartid  <= (mem_rdata_q[6:0] == 7'b1110011 && mem_rdata_q[31:12] == 'b11110001000000000010) && ENABLE_MHARTID;
 
 			instr_ecall_ebreak <= ((mem_rdata_q[6:0] == 7'b1110011 && !mem_rdata_q[31:21] && !mem_rdata_q[19:7]) ||
 					(COMPRESSED_ISA && mem_rdata_q[15:0] == 16'h9002));
@@ -1625,18 +1626,18 @@ module picorv32 #(
 								cpu_state <= cpu_state_trap;
 						end
 					end
-					ENABLE_COUNTERS && is_rdcycle_rdcycleh_rdinstr_rdinstrh_mhartid: begin
+					(ENABLE_COUNTERS || ENABLE_MHARTID) && is_rdcycle_rdcycleh_rdinstr_rdinstrh_mhartid: begin
 						(* parallel_case, full_case *)
 						case (1'b1)
-							instr_rdcycle:
+							instr_rdcycle && ENABLE_COUNTERS:
 								reg_out <= count_cycle[31:0];
-							instr_rdcycleh && ENABLE_COUNTERS64:
+							instr_rdcycleh && ENABLE_COUNTERS && ENABLE_COUNTERS64:
 								reg_out <= count_cycle[63:32];
-							instr_rdinstr:
+							instr_rdinstr && ENABLE_COUNTERS:
 								reg_out <= count_instr[31:0];
-							instr_rdinstrh && ENABLE_COUNTERS64:
+							instr_rdinstrh && ENABLE_COUNTERS && ENABLE_COUNTERS64:
 								reg_out <= count_instr[63:32];
-							instr_mhartid:
+							instr_mhartid && ENABLE_MHARTID:
 								reg_out <= HART_ID;
 						endcase
 						latched_store <= 1;

@@ -87,7 +87,9 @@ module top (
 			
 			/* verilator lint_off PINMISSING */
 			picorv32 #(
-				.ENABLE_COUNTERS(1),
+				.ENABLE_COUNTERS((core_num == 0) ? 1 : 0),
+				.ENABLE_COUNTERS64(0),
+				.ENABLE_MHARTID(1),
 				.LATCHED_MEM_RDATA(1),
 				.TWO_STAGE_SHIFT(0),
 				.TWO_CYCLE_ALU(0),
