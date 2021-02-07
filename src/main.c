@@ -34,7 +34,7 @@ int __attribute__((optimize("O0"))) main()
 
         uint32_t mcomp = get_mcompose();
         if (mcomp != 0) print_string("Reading mcompose failed!\n");
-        //set_mcompose(4);
+        set_mcompose(4);
         mcomp = get_mcompose();
         if (mcomp != 4) print_string("Writing mcompose failed!\n");
 
