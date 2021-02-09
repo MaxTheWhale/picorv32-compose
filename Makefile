@@ -3,14 +3,13 @@ TOOLCHAIN_PREFIX = riscv32-unknown-elf-
 C_SOURCE_DIR = src
 RTL_SOURCE_DIR = rtl
 BUILD_DIR = build
-FIRMWARE = '"$(BUILD_DIR)/firmware.hex"'
 
 MEM_SIZE = 8192
 STACK_SIZE = 256
 
-multicore: $(BUILD_DIR)/multicore.bin
+icefun: $(BUILD_DIR)/icefun.bin
 
-singlecore: $(BUILD_DIR)/singlecore.bin
+arty: $(BUILD_DIR)/arty.bit
 
 ## -------------------
 ## firmware generation
@@ -30,30 +29,42 @@ $(BUILD_DIR)/firmware.hex: $(BUILD_DIR)/firmware.bin
 	python3 makehex.py $< 1792 > $@
 
 ## ------------------------------
-## main flow: synth/p&r/bitstream
+## iceFUN flow: synth/p&r/bitstream
 
-$(BUILD_DIR)/multicore.json: $(RTL_SOURCE_DIR)/multicore.v $(RTL_SOURCE_DIR)/picorv32.v $(BUILD_DIR)/firmware.hex
-	yosys -DFIRMWARE=$(FIRMWARE) -DMEM_SIZE=$(MEM_SIZE) -v3 -p 'synth_ice40 -top top -json $@' $(filter %.v, $^)
+$(BUILD_DIR)/icefun.json: $(RTL_SOURCE_DIR)/icefun.v $(RTL_SOURCE_DIR)/picorv32.v $(BUILD_DIR)/firmware.hex
+	yosys -v3 -p 'synth_ice40 -top top -json $@' $(RTL_SOURCE_DIR)/icefun.v
 
-$(BUILD_DIR)/multicore.asc: $(BUILD_DIR)/multicore.json top.pcf
-	nextpnr-ice40 --hx8k --package cb132 --json $< --pcf top.pcf --asc $@
+$(BUILD_DIR)/icefun.asc: $(BUILD_DIR)/icefun.json icefun.pcf
+	nextpnr-ice40 --hx8k --package cb132 --json $< --pcf icefun.pcf --asc $@
 
-$(BUILD_DIR)/multicore.bin: $(BUILD_DIR)/multicore.asc
+$(BUILD_DIR)/icefun.bin: $(BUILD_DIR)/icefun.asc
 	icepack $< $@
 
-$(BUILD_DIR)/singlecore.json: $(RTL_SOURCE_DIR)/singlecore.v $(RTL_SOURCE_DIR)/picorv32.v $(BUILD_DIR)/firmware.hex
-	yosys -DFIRMWARE=$(FIRMWARE) -DMEM_SIZE=$(MEM_SIZE) -v3 -p 'synth_ice40 -top top -json $@' $(filter %.v, $^)
+## ------------------------------
+## ARTY flow: synth/pack/place/route/fasm/bitstream
 
-$(BUILD_DIR)/singlecore.asc: $(BUILD_DIR)/singlecore.json top.pcf
-	nextpnr-ice40 --hx8k --package cb132 --json $< --pcf top.pcf --asc $@
+$(BUILD_DIR)/top.eblif: $(RTL_SOURCE_DIR)/arty.v $(RTL_SOURCE_DIR)/picorv32.v $(BUILD_DIR)/firmware.hex
+	cd build && symbiflow_synth -t top -v ../rtl/arty.v -d artix7 -p xc7a35tcsg324-1 -x ../arty.xdc
 
-$(BUILD_DIR)/singlecore.bin: $(BUILD_DIR)/singlecore.asc
-	icepack $< $@
+$(BUILD_DIR)/top.net: $(BUILD_DIR)/top.eblif
+	cd build && symbiflow_pack -e top.eblif -d xc7a50t_test
+
+$(BUILD_DIR)/top.place: $(BUILD_DIR)/top.net
+	cd build && symbiflow_place -e top.eblif -d xc7a50t_test -n top.net -P xc7a35tcsg324-1
+
+$(BUILD_DIR)/top.route: $(BUILD_DIR)/top.place
+	cd build && symbiflow_route -e top.eblif -d xc7a50t_test
+
+$(BUILD_DIR)/top.fasm: $(BUILD_DIR)/top.route
+	cd build && symbiflow_write_fasm -e top.eblif -d xc7a50t_test
+
+$(BUILD_DIR)/arty.bit: $(BUILD_DIR)/top.fasm
+	cd build && symbiflow_write_bitstream -d artix7 -f top.fasm -p xc7a35tcsg324-1 -b arty.bit
 
 ## ------
 ## el fin
 
 clean:
-	@rm -f $(BUILD_DIR)/*.bin $(BUILD_DIR)/*.hex $(BUILD_DIR)/*.elf $(BUILD_DIR)/*.asc $(BUILD_DIR)/*.json
+	@cd $(BUILD_DIR) && rm -f *.bin *.hex *.elf *.asc *.json *.log *.rpt *.bit *.fasm *.v *.ilang *.net *.sdc *.eblif *.place *.ioplace *.route *.post_routing
 
 .PHONY: clean

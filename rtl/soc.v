@@ -1,10 +1,12 @@
-`include "led_display.v"
+`include "picorv32.v"
 `include "uart.v"
 
-module top (
+module soc #(
+    parameter CLK_MHZ = 12
+) (
 	input clk,
-	output reg led1, led2, led3, led4, led5, led6, led7, led8,
-	output lcol1, lcol2, lcol3, lcol4, uart_tx
+	output reg [3:0] leds,
+    output uart_tx
 );
 
 	localparam N_CORES = 4;
@@ -21,38 +23,10 @@ module top (
 			resetn_counter <= resetn_counter + 1;
 	end
 
-    // -------------------------------
-	// LED Display
-
-	reg [31:0] leds = 32'b0;
-	reg [2:0] brightness = 3'b111;
-
-	led_display display (
-		.clk12MHz(clk),
-		.led1,
-		.led2,
-		.led3,
-		.led4,
-		.led5,
-		.led6,
-		.led7,
-		.led8,
-		.lcol1,
-		.lcol2,
-		.lcol3,
-		.lcol4,
-
-		.leds1   (leds[ 7: 0]),
-		.leds2   (leds[15: 8]),
-		.leds3   (leds[23:16]),
-		.leds4   (leds[31:24]),
-		.leds_pwm(brightness)
-	);
-
 	// -------------------------------
 	// Memory/IO Interface
 
-	localparam MEM_WORDS = `MEM_SIZE / 4;
+	localparam MEM_WORDS = 2048;
 	localparam MEM_BITS = $clog2(MEM_WORDS);
 	reg [31:0] memory [0:MEM_WORDS-1];
 	initial $readmemh(`FIRMWARE, memory);
@@ -121,8 +95,8 @@ module top (
 
 	wire      tx_ready;
 
-	uart uart0 (
-		.clk12MHz(clk),
+	uart #(.CLK_MHZ(CLK_MHZ)) uart0 (
+		.clk     (clk),
 		.tx      (uart_tx),
 		.sendData(tx_data),
 		.sendReq (tx_send),
@@ -164,10 +138,10 @@ module top (
 					mem_ready[mem_arb_counter] <= 1;
 				end
 				mem_write[mem_arb_counter] && mem_addr_high == 4'h1: begin
-					if (mem_wstrb[0]) leds[ 7: 0] <= mem_wdata[ 7: 0];
-					if (mem_wstrb[1]) leds[15: 8] <= mem_wdata[15: 8];
-					if (mem_wstrb[2]) leds[23:16] <= mem_wdata[23:16];
-					if (mem_wstrb[3]) leds[31:24] <= mem_wdata[31:24];
+					if (mem_wstrb[0]) leds[0] <= mem_wdata[0];
+					if (mem_wstrb[1]) leds[1] <= mem_wdata[8];
+					if (mem_wstrb[2]) leds[2] <= mem_wdata[16];
+					if (mem_wstrb[3]) leds[3] <= mem_wdata[24];
 					mem_ready[mem_arb_counter] <= 1;
 				end
                 mem_read[mem_arb_counter] && mem_addr_high == 4'h2: begin
