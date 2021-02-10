@@ -8,19 +8,20 @@ module top (
 	output lcol1, lcol2, lcol3, lcol4, uart_tx
 );
 	wire [3:0] soc_leds;
+	wire [2:0] dbg_signals;
 
 	soc #(
 		.CLK_MHZ(12)
 	) composed_soc (
 		.clk(clk),
 		.leds(soc_leds),
+		.dbg(dbg_signals),
 		.uart_tx(uart_tx)
 	);
 
     // -------------------------------
 	// LED Display
 
-	reg [27:0] other_leds = 28'b0;
 	reg [2:0] brightness = 3'b111;
 
 	led_display display (
@@ -38,10 +39,10 @@ module top (
 		.lcol3,
 		.lcol4,
 
-		.leds1   ({other_leds[ 6: 0], soc_leds[0]}),
-		.leds2   ({other_leds[13: 7], soc_leds[1]}),
-		.leds3   ({other_leds[20:14], soc_leds[2]}),
-		.leds4   ({other_leds[27:21], soc_leds[3]}),
+		.leds1   ({30'b0, soc_leds[0]}),
+		.leds2   ({29'b0, dbg_signals[0], soc_leds[1]}),
+		.leds3   ({29'b0, dbg_signals[1], soc_leds[2]}),
+		.leds4   ({29'b0, dbg_signals[2], soc_leds[3]}),
 		.leds_pwm(brightness)
 	);
 

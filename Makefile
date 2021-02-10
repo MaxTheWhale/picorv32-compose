@@ -31,7 +31,7 @@ $(BUILD_DIR)/firmware.hex: $(BUILD_DIR)/firmware.bin
 ## ------------------------------
 ## iceFUN flow: synth/p&r/bitstream
 
-$(BUILD_DIR)/icefun.json: $(RTL_SOURCE_DIR)/icefun.v $(RTL_SOURCE_DIR)/picorv32.v $(BUILD_DIR)/firmware.hex
+$(BUILD_DIR)/icefun.json: $(RTL_SOURCE_DIR)/*.v $(BUILD_DIR)/firmware.hex
 	yosys -v3 -p 'synth_ice40 -top top -json $@' $(RTL_SOURCE_DIR)/icefun.v
 
 $(BUILD_DIR)/icefun.asc: $(BUILD_DIR)/icefun.json icefun.pcf
@@ -43,7 +43,7 @@ $(BUILD_DIR)/icefun.bin: $(BUILD_DIR)/icefun.asc
 ## ------------------------------
 ## ARTY flow: synth/pack/place/route/fasm/bitstream
 
-$(BUILD_DIR)/top.eblif: $(RTL_SOURCE_DIR)/arty.v $(RTL_SOURCE_DIR)/picorv32.v $(BUILD_DIR)/firmware.hex
+$(BUILD_DIR)/top.eblif: $(RTL_SOURCE_DIR)/*.v $(BUILD_DIR)/firmware.hex
 	cd build && symbiflow_synth -t top -v ../rtl/arty.v -d artix7 -p xc7a35tcsg324-1 -x ../arty.xdc
 
 $(BUILD_DIR)/top.net: $(BUILD_DIR)/top.eblif

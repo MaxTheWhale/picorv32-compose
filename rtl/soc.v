@@ -6,6 +6,7 @@ module soc #(
 ) (
 	input clk,
 	output reg [3:0] leds,
+	output reg [2:0] dbg,
     output uart_tx
 );
 
@@ -53,15 +54,49 @@ module soc #(
 	reg [N_CORES_BITS-1:0] mem_arb_counter = 0;
 	reg [N_CORES_BITS-1:0] mem_la_arb_counter = 1;
 
+	wire [3:0] mcompose;
+	wire [N_CORES*4 - 1 : 0] dummy;
+	wire [N_CORES-2 : 0] mcompose_ready;
+
 	// -------------------------------
 	// PicoRV32 Cores
+
+	// Primary core
+	/* verilator lint_off PINMISSING */
+	picorv32 #(
+		.ENABLE_COUNTERS(1),
+		.ENABLE_COUNTERS64(0),
+		.ENABLE_MHARTID(1),
+		.ENABLE_MCOMPOSE(1),
+		.LATCHED_MEM_RDATA(1),
+		.TWO_STAGE_SHIFT(0),
+		.TWO_CYCLE_ALU(0),
+		.CATCH_MISALIGN(1),
+		.CATCH_ILLINSN(1),
+		.HART_ID(0)
+	) primary_cpu (
+		.clk              (clk),
+		.resetn           (resetn),
+		.mem_la_read      (mem_la_read [0]),
+		.mem_la_write     (mem_la_write[0]),
+		.mem_ready        (mem_ready   [0]),
+		.mem_la_addr      (mem_la_addr [31: 0]),
+		.mem_la_wdata     (mem_la_wdata[31: 0]),
+		.mem_la_wstrb     (mem_la_wstrb[ 3: 0]),
+		.mem_rdata        (mem_rdata   [31: 0]),
+		.mcompose_out     (mcompose),
+		.mcompose_ready_in(mcompose_ready[0])
+	);
+	/* verilator lint_on PINMISSING */
+
+	// // Secondary cores
 	genvar core_num;
 	generate
-		for (core_num = 0; core_num < N_CORES; core_num = core_num + 1) begin
+		for (core_num = 1; core_num < N_CORES; core_num = core_num + 1) begin
 			
 			/* verilator lint_off PINMISSING */
 			picorv32 #(
-				.ENABLE_COUNTERS((core_num == 0) ? 1 : 0),
+				.ENABLE_COUNTERS(0),
 				.ENABLE_COUNTERS64(0),
 				.ENABLE_MHARTID(1),
 				.ENABLE_MCOMPOSE(1),
@@ -72,15 +107,18 @@ module soc #(
 				.CATCH_ILLINSN(1),
 				.HART_ID(core_num)
 			) cpu (
-				.clk      (clk      ),
-				.resetn   (resetn   ),
-				.mem_la_read(mem_la_read    [core_num]),
-				.mem_la_write(mem_la_write    [core_num]),
-				.mem_ready(mem_ready    [core_num]),
-				.mem_la_addr(mem_la_addr[32*core_num + 31 -: 32]),
-				.mem_la_wdata(mem_la_wdata [32*core_num + 31 -: 32]),
-				.mem_la_wstrb(mem_la_wstrb [4*core_num  + 3  -: 4]),
-				.mem_rdata(mem_rdata    [32*core_num + 31 -: 32])
+				.clk      		   (clk),
+				.resetn   		   (resetn),
+				.mem_la_read	   (mem_la_read  [core_num]),
+				.mem_la_write	   (mem_la_write [core_num]),
+				.mem_ready		   (mem_ready    [core_num]),
+				.mem_la_addr	   (mem_la_addr  [32*core_num + 31 -: 32]),
+				.mem_la_wdata	   (mem_la_wdata [32*core_num + 31 -: 32]),
+				.mem_la_wstrb      (mem_la_wstrb [4*core_num  + 3  -: 4]),
+				.mem_rdata         (mem_rdata    [32*core_num + 31 -: 32]),
+				.mcompose_in       (mcompose),
+				.mcompose_ready_in ((core_num == N_CORES - 1) ? 1'b1 : mcompose_ready[core_num]),
+				.mcompose_ready_out(mcompose_ready[core_num - 1])
 			);
 			/* verilator lint_on PINMISSING */
 
@@ -122,6 +160,8 @@ module soc #(
 
 		mem_ready <= 0;
         tx_send   <= 0;
+
+		dbg <= mcompose_ready;
 
 		if (resetn && mem_access[mem_arb_counter] && !mem_ready[mem_arb_counter]) begin
 			(* parallel_case *)

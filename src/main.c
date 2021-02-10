@@ -18,6 +18,15 @@ void set_mcompose(uint32_t mcompose) {
     asm volatile ("csrw 0x7c0, %0" : : "r"(mcompose) : );
 }
 
+void delay_cycles(uint32_t n_cycles) {
+    uint32_t cycles;
+    asm volatile ("rdcycle %0" : "=r"(cycles) : : );
+    uint32_t end_cycles = cycles + n_cycles;
+    while (cycles < end_cycles) {
+        asm volatile ("rdcycle %0" : "=r"(cycles) : : );
+    }
+}
+
 int check_result(const void *a, const void *b, int n_bytes) {
     char *a_bytes = (char*)a;
     char *b_bytes = (char*)b;
@@ -34,9 +43,12 @@ int __attribute__((optimize("O0"))) main()
 
         uint32_t mcomp = get_mcompose();
         if (mcomp != 0) print_string("Reading mcompose failed!\n");
-        set_mcompose(4);
+        set_mcompose(2);
         mcomp = get_mcompose();
-        if (mcomp != 4) print_string("Writing mcompose failed!\n");
+        if (mcomp != 2) print_string("Writing mcompose failed!\n");
+
+        delay_cycles(12000000);
+        set_mcompose(0);
 
         #define NUM_WORDS 4
         unsigned int a[NUM_WORDS] = {0xdeadbeef, 0xab43032b, 0, 0};
