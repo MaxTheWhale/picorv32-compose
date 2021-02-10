@@ -1,6 +1,6 @@
 #include "uart.h"
 #include "stats.h"
-#include "gray.h"
+#include "blink.h"
 
 uint32_t get_hart_id() {
     uint32_t id;
@@ -101,5 +101,5 @@ int __attribute__((optimize("O0"))) main()
 
     }
 
-    gray_counter(get_hart_id());
+    blink(get_hart_id());
 }

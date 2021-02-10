@@ -1,7 +1,7 @@
 TOOLCHAIN_PREFIX = riscv32-unknown-elf-
 
-C_SOURCE_DIR = src
-RTL_SOURCE_DIR = rtl
+FIRMWARE_DIR = src
+RTL_DIR = rtl
 BUILD_DIR = build
 
 MEM_SIZE = 8192
@@ -14,11 +14,11 @@ arty: $(BUILD_DIR)/arty.bit
 ## -------------------
 ## firmware generation
 
-$(BUILD_DIR)/firmware.elf: $(C_SOURCE_DIR)/*.c $(C_SOURCE_DIR)/*.S firmware.lds
+$(BUILD_DIR)/firmware.elf: $(FIRMWARE_DIR)/*.c $(FIRMWARE_DIR)/*.S $(FIRMWARE_DIR)/firmware.lds
 	$(TOOLCHAIN_PREFIX)gcc \
 		-march=rv32i -Os -ffreestanding -nostdlib -DMEM_SIZE=$(MEM_SIZE) -DSTACK_SIZE=$(STACK_SIZE) \
 		-o $@ $(filter %.c, $^) $(filter %.S, $^) \
-		--std=gnu99 -lgcc -Wl,-Bstatic,-T,firmware.lds,--strip-debug
+		--std=gnu99 -lgcc -Wl,-Bstatic,-T,$(FIRMWARE_DIR)/firmware.lds,--strip-debug
 	chmod -x $@
 
 $(BUILD_DIR)/firmware.bin: $(BUILD_DIR)/firmware.elf
@@ -26,16 +26,16 @@ $(BUILD_DIR)/firmware.bin: $(BUILD_DIR)/firmware.elf
 	chmod -x $@
 
 $(BUILD_DIR)/firmware.hex: $(BUILD_DIR)/firmware.bin
-	python3 makehex.py $< 1792 > $@
+	python3 util/makehex.py $< 1792 > $@
 
 ## ------------------------------
 ## iceFUN flow: synth/p&r/bitstream
 
-$(BUILD_DIR)/icefun.json: $(RTL_SOURCE_DIR)/*.v $(BUILD_DIR)/firmware.hex
-	yosys -v3 -p 'synth_ice40 -top top -json $@' $(RTL_SOURCE_DIR)/icefun.v
+$(BUILD_DIR)/icefun.json: $(RTL_DIR)/*.v $(BUILD_DIR)/firmware.hex
+	yosys -v3 -p 'synth_ice40 -top top -json $@' $(RTL_DIR)/icefun.v
 
-$(BUILD_DIR)/icefun.asc: $(BUILD_DIR)/icefun.json icefun.pcf
-	nextpnr-ice40 --hx8k --package cb132 --json $< --pcf icefun.pcf --asc $@
+$(BUILD_DIR)/icefun.asc: $(BUILD_DIR)/icefun.json $(RTL_DIR)/icefun.pcf
+	nextpnr-ice40 --hx8k --package cb132 --json $< --pcf $(RTL_DIR)/icefun.pcf --asc $@
 
 $(BUILD_DIR)/icefun.bin: $(BUILD_DIR)/icefun.asc
 	icepack $< $@
@@ -43,8 +43,8 @@ $(BUILD_DIR)/icefun.bin: $(BUILD_DIR)/icefun.asc
 ## ------------------------------
 ## ARTY flow: synth/pack/place/route/fasm/bitstream
 
-$(BUILD_DIR)/top.eblif: $(RTL_SOURCE_DIR)/*.v $(BUILD_DIR)/firmware.hex
-	cd build && symbiflow_synth -t top -v ../rtl/arty.v -d artix7 -p xc7a35tcsg324-1 -x ../arty.xdc
+$(BUILD_DIR)/top.eblif: $(RTL_DIR)/*.v $(BUILD_DIR)/firmware.hex $(RTL_DIR)/arty.xdc
+	cd build && symbiflow_synth -t top -v ../rtl/arty.v -d artix7 -p xc7a35tcsg324-1 -x ../$(RTL_DIR)/arty.xdc
 
 $(BUILD_DIR)/top.net: $(BUILD_DIR)/top.eblif
 	cd build && symbiflow_pack -e top.eblif -d xc7a50t_test
